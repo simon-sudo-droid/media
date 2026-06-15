@@ -10,6 +10,8 @@ from sqlalchemy import select, func
 from app.core.database import SessionLocal
 from app.models import (
     Challenge,
+    Checklist,
+    ChecklistItem,
     Course,
     Lesson,
     Quiz,
@@ -559,6 +561,54 @@ CHANNELS = [
 ]
 
 
+# ─────────────────────────────────────────────────────────────
+# Checklists (editing workflows)
+# ─────────────────────────────────────────────────────────────
+CHECKLISTS = [
+    {
+        "slug": "boardroom-prayer-room-clips",
+        "title": "Boardroom x Prayer Room — Podcast Clips",
+        "category": "Short-form", "icon": "Scissors", "order_index": 1,
+        "description": "Turning a full podcast episode into postable short clips.",
+        "items": [
+            "Select and trim the best 1–2 min clips from the full episode",
+            "Add auto-captions",
+            "Remove filler words (ums, uhs, repeated phrases)",
+            "Export as video file ready for posting",
+        ],
+    },
+    {
+        "slug": "monthly-leadership-reels",
+        "title": "Monthly Leadership Reels",
+        "category": "Short-form", "icon": "Clapperboard", "order_index": 2,
+        "description": "Avatar-led leadership reels, 60–90 seconds.",
+        "items": [
+            "Generate HeyGen avatar segment",
+            "Source and sync relevant b-roll footage",
+            "Add subtitles",
+            "Keep final length within 60–90 seconds",
+            "Export and do a final review",
+        ],
+    },
+    {
+        "slug": "podcast-audio-series",
+        "title": "Podcast Audio Series (per episode)",
+        "category": "Audio", "icon": "AudioLines", "order_index": 3,
+        "description": "Full audio post-production checklist for each episode.",
+        "items": [
+            "Check and adjust audio levels — target -16 LUFS loudness",
+            "Remove long silences and dead air",
+            "Remove filler words (ums, uhs, repeated phrases)",
+            "Apply noise reduction / remove background noise",
+            "Add intro and outro music (if applicable)",
+            "Export to MP3 — 128 kbps mono or 192 kbps stereo",
+            "Name file correctly: episode-title-ep-number.mp3",
+            "Do a final listen-through to catch any remaining errors",
+        ],
+    },
+]
+
+
 def run_seed() -> None:
     db = SessionLocal()
     try:
@@ -594,6 +644,16 @@ def run_seed() -> None:
         if db.scalar(select(func.count()).select_from(ReferenceChannel)) == 0:
             for ch in CHANNELS:
                 db.add(ReferenceChannel(**ch))
+
+        if db.scalar(select(func.count()).select_from(Checklist)) == 0:
+            for cl in CHECKLISTS:
+                checklist = Checklist(
+                    slug=cl["slug"], title=cl["title"], description=cl["description"],
+                    category=cl["category"], icon=cl["icon"], order_index=cl["order_index"],
+                )
+                for i, text in enumerate(cl["items"]):
+                    checklist.items.append(ChecklistItem(text=text, order_index=i))
+                db.add(checklist)
 
         db.commit()
     finally:

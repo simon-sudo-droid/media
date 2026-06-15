@@ -50,11 +50,64 @@ def _clamp(n: int) -> int:
 # ─────────────────────────────────────────────────────────────
 # Mock generators
 # ─────────────────────────────────────────────────────────────
+# Shot-type cycle drives intentional variety (wide / medium / close / cutaway…).
+_SHOT_CYCLE = [
+    ("Wide establishing shot", "establishing"),
+    ("Medium shot", "supporting"),
+    ("Close-up insert", "insert"),
+    ("Cutaway detail", "cutaway"),
+    ("Reaction shot", "reaction"),
+    ("Atmospheric b-roll", "atmospheric"),
+]
+
+# Conceptual devices for non-literal / metaphorical visuals.
+_CONCEPT_DEVICES = [
+    "a symbolic object that represents the idea",
+    "a before/after or clean-vs-messy contrast",
+    "a timelapse showing change over time (plant growing, sky shifting)",
+    "a visual metaphor (flipping calendar pages, a path forward, an open door)",
+    "an environmental detail that sets the mood (light through a window, hands at rest)",
+]
+
+
 def _mock_broll(script: str) -> dict:
     scenes = _split_scenes(script)
     out = []
-    for i, scene in enumerate(scenes, 1):
+    for i, scene in enumerate(scenes):
         kw = _keywords(scene)
+        # Vary shot types per scene for a dynamic, non-repetitive sequence.
+        s1 = _SHOT_CYCLE[i % len(_SHOT_CYCLE)]
+        s2 = _SHOT_CYCLE[(i + 2) % len(_SHOT_CYCLE)]
+        concept = _CONCEPT_DEVICES[i % len(_CONCEPT_DEVICES)]
+        concept2 = _CONCEPT_DEVICES[(i + 3) % len(_CONCEPT_DEVICES)]
+
+        gen_prompts = [
+            {
+                "label": f"Literal · {s1[0]}",
+                "shot_type": s1[1],
+                "approach": "literal",
+                "prompt": (
+                    f"{s1[0]}, cinematic, of {kw[0]} {('and ' + kw[1]) if len(kw) > 1 else ''} — "
+                    f"directly illustrating: \"{scene[:90].strip()}\". Shallow depth of field, "
+                    "soft natural lighting, subtle camera movement, 24fps, photoreal, color-graded, high detail."
+                ),
+                "resolution": "3840x2160 (4K)",
+                "duration": "3–5s",
+            },
+            {
+                "label": f"Conceptual · {s2[0]}",
+                "shot_type": s2[1],
+                "approach": "conceptual",
+                "prompt": (
+                    f"{s2[0]}, cinematic, conceptual visual representing the idea of \"{kw[0]}\" using "
+                    f"{concept}. Evocative not literal, moody lighting, gentle motion, shallow focus, "
+                    "filmic color grade, 24fps, photoreal, high detail."
+                ),
+                "resolution": "3840x2160 (4K)",
+                "duration": "3–5s",
+            },
+        ]
+
         out.append(
             {
                 "scene": scene[:160] + ("…" if len(scene) > 160 else ""),
@@ -68,7 +121,7 @@ def _mock_broll(script: str) -> dict:
                     "Low-angle hero shot for emphasis"
                     if i % 2
                     else "Over-the-shoulder for perspective",
-                    "Drone / aerial pull-back for scale" if i == 1 else "Slow push-in",
+                    "Drone / aerial pull-back for scale" if i == 0 else "Slow push-in",
                 ],
                 "motion_graphics": [
                     f"Kinetic text callout: “{kw[0].title()}”",
@@ -78,6 +131,17 @@ def _mock_broll(script: str) -> dict:
                     f"On-screen keyword: {kw[0].upper()}",
                     "Animated quote pull for the strongest line",
                 ],
+                "concept_ideas": [
+                    f"Instead of showing “{kw[0]}” literally, show {concept}.",
+                    f"Represent the feeling behind it with {concept2}.",
+                    "Avoid the obvious first idea — pick the visual that conveys the emotion.",
+                ],
+                "shot_types": [
+                    "Mix wide + medium + close-up so the sequence never feels repetitive",
+                    f"This beat → {s1[0]} then cut to {s2[0]}",
+                    "Add a reaction or cutaway to cover edits and keep momentum",
+                ],
+                "gen_prompts": gen_prompts,
             }
         )
     return {"provider": "mock", "scenes": out}
@@ -255,8 +319,11 @@ def _call_llm_json(system: str, user: str) -> dict | None:
 def generate_broll(script: str) -> dict:
     result = _call_llm_json(
         "You are an expert video editor. Given a script, break it into scenes and "
-        "suggest b-roll. Return JSON: {scenes:[{scene, broll_ideas[], camera_angles[], "
-        "motion_graphics[], text_overlays[]}]}.",
+        "suggest b-roll. Favor VARIETY (mix wide, medium, close-up shots) and "
+        "CONCEPTUAL/non-literal visuals (show the idea/feeling, not the words). "
+        "Return JSON: {scenes:[{scene, broll_ideas[], camera_angles[], "
+        "motion_graphics[], text_overlays[], concept_ideas[], shot_types[], "
+        "gen_prompts:[{label, shot_type, approach, prompt, resolution, duration}]}]}.",
         script,
     )
     if result and "scenes" in result:

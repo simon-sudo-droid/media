@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ScanSearch, Loader2, Camera, Clapperboard, Type, Film, Sparkles } from "lucide-react";
+import {
+  ScanSearch, Loader2, Camera, Clapperboard, Type, Film, Sparkles,
+  Lightbulb, Shuffle, Copy, Check, Download, Wand2, Info,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,9 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ToolHeader } from "@/components/tool-header";
 
+type GenPrompt = {
+  label: string; shot_type: string; approach: string;
+  prompt: string; resolution: string; duration: string;
+};
 type Scene = {
   scene: string; broll_ideas: string[]; camera_angles: string[];
   motion_graphics: string[]; text_overlays: string[];
+  concept_ideas?: string[]; shot_types?: string[]; gen_prompts?: GenPrompt[];
 };
 type Resp = { provider: string; scenes: Scene[] };
 
@@ -20,11 +28,29 @@ const SAMPLE = `Most people think editing is about cutting clips together. It's 
 Editing is decision-making. Every cut answers a question.
 Today, I'll show you the three cuts that make any video feel professional — and how to use them.`;
 
+const SHOT_TAXONOMY = [
+  { group: "Building blocks", items: [
+    ["Establishing shots", "Wide frames at the start of a sequence to show where the action happens."],
+    ["Cutaways", "Brief clips that interrupt the main footage to show a related object/action (e.g. a ringing phone)."],
+    ["Inserts & close-ups", "Tight shots isolating a specific element or gesture to highlight detail."],
+    ["Reaction shots", "Genuine, unscripted responses and expressions from participants."],
+  ]},
+  { group: "Storyteller", items: [
+    ["Atmospheric / ambient", "Observational footage that captures mood, setting and environment."],
+    ["Supporting shots", "Literal footage describing exactly what's being said (showing the pan while describing the recipe)."],
+    ["Practical inserts", "Visual aids — text, diagrams, printouts — for a personal touch."],
+    ["Narrative b-roll", "Artistic shots that tell their own story or work as visual metaphors — a 'subplot'."],
+    ["Stock footage", "Ready-made clips from royalty-free or paid platforms."],
+    ["Archival footage", "Historical imagery used for context or to support a story about the past."],
+  ]},
+];
+
 export default function BrollPage() {
   const { refresh } = useAuth();
   const [script, setScript] = useState("");
   const [data, setData] = useState<Resp | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   async function run() {
     setBusy(true);
@@ -37,14 +63,78 @@ export default function BrollPage() {
     }
   }
 
+  function downloadBrief() {
+    if (!data) return;
+    const lines: string[] = ["EditMentor AI — B-roll Generation Brief", "=".repeat(44), ""];
+    data.scenes.forEach((s, i) => {
+      lines.push(`SCENE ${i + 1}: ${s.scene}`);
+      (s.gen_prompts || []).forEach((g) => {
+        lines.push(`  • [${g.label}] (${g.resolution}, ${g.duration})`);
+        lines.push(`    ${g.prompt}`);
+      });
+      lines.push("");
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "broll-generation-brief.txt";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <ToolHeader
         icon={ScanSearch}
         title="Script → B-roll Generator"
-        subtitle="Paste a script and get scene-by-scene b-roll, camera angles, motion graphics & text overlay ideas."
+        subtitle="Paste a script and get scene-by-scene b-roll, shot variety, conceptual visuals, and ready-to-render generation briefs."
         provider={data?.provider}
       />
+
+      {/* How we choose b-roll — collapsible guidance */}
+      <Card>
+        <CardContent className="p-0">
+          <button onClick={() => setShowGuide((v) => !v)} className="flex w-full items-center justify-between p-5 text-left">
+            <span className="flex items-center gap-2 font-semibold"><Info className="h-4 w-4 text-primary" /> How we choose great b-roll</span>
+            <Badge variant="secondary">{showGuide ? "Hide" : "Show"}</Badge>
+          </button>
+          {showGuide && (
+            <div className="space-y-5 border-t border-border p-5 animate-in">
+              <Guide icon={Shuffle} title="1 · Variety">
+                Even with AI or stock footage, don&rsquo;t let everything feel repetitive. Intentionally mix
+                <strong> wide, medium, and close-up</strong> shots to keep videos dynamic and engaging.
+              </Guide>
+              <Guide icon={Lightbulb} title="2 · Think conceptually, not just literally">
+                Not everything needs to be literal. For abstract lines, use <strong>conceptual visuals</strong> that
+                represent the idea or feeling.
+                <ul className="mt-2 space-y-1 text-sm">
+                  <li>• “Stay focused to succeed” → blocking distractions, a clean-vs-messy desk, a blurred background.</li>
+                  <li>• “Growth takes time” → a plant growing, a timelapse, calendar pages flipping.</li>
+                </ul>
+                <span className="mt-2 block text-sm">Think literally → limited. Think conceptually → more creative, less repetitive, more engaging.</span>
+              </Guide>
+              <div>
+                <div className="mb-2 flex items-center gap-2 font-medium"><Film className="h-4 w-4 text-primary" /> 3 · Types of b-roll</div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {SHOT_TAXONOMY.map((g) => (
+                    <div key={g.group} className="rounded-lg bg-secondary/40 p-4">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.group}</div>
+                      <dl className="space-y-2">
+                        {g.items.map(([t, d]) => (
+                          <div key={t}>
+                            <dt className="text-sm font-medium">{t}</dt>
+                            <dd className="text-sm text-muted-foreground">{d}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="space-y-3 p-6">
@@ -65,9 +155,12 @@ export default function BrollPage() {
       </Card>
 
       {data && (
-        <div className="space-y-4">
+        <div className="space-y-4 stagger">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={downloadBrief}><Download className="h-4 w-4" /> Download generation brief (.txt)</Button>
+          </div>
           {data.scenes.map((s, i) => (
-            <Card key={i}>
+            <Card key={i} className="lift">
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-start gap-3">
                   <Badge variant="default" className="shrink-0">Scene {i + 1}</Badge>
@@ -76,9 +169,23 @@ export default function BrollPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <SuggestList icon={Film} title="B-roll ideas" items={s.broll_ideas} />
                   <SuggestList icon={Camera} title="Camera angles" items={s.camera_angles} />
+                  <SuggestList icon={Lightbulb} title="Conceptual (non-literal) ideas" items={s.concept_ideas || []} />
+                  <SuggestList icon={Shuffle} title="Shot variety" items={s.shot_types || []} />
                   <SuggestList icon={Clapperboard} title="Motion graphics" items={s.motion_graphics} />
                   <SuggestList icon={Type} title="Text overlays" items={s.text_overlays} />
                 </div>
+
+                {(s.gen_prompts?.length ?? 0) > 0 && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                      <Wand2 className="h-4 w-4 text-primary" /> B-roll generation briefs
+                      <span className="text-xs font-normal text-muted-foreground">— paste into any AI video tool (Runway, Luma, Veo, Pika…)</span>
+                    </div>
+                    <div className="space-y-3">
+                      {s.gen_prompts!.map((g, gi) => <GenPromptCard key={gi} g={g} />)}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -88,7 +195,39 @@ export default function BrollPage() {
   );
 }
 
+function GenPromptCard({ g }: { g: GenPrompt }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(g.prompt); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  }
+  return (
+    <div className="rounded-lg bg-background/60 p-3">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">{g.label}</span>
+        <Badge variant={g.approach === "conceptual" ? "default" : "secondary"} className="capitalize">{g.approach}</Badge>
+        <Badge variant="secondary" className="capitalize">{g.shot_type}</Badge>
+        <Badge variant="outline">{g.resolution}</Badge>
+        <Badge variant="outline">{g.duration}</Badge>
+        <button onClick={copy} className="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy prompt</>}
+        </button>
+      </div>
+      <p className="text-sm text-foreground/90">{g.prompt}</p>
+    </div>
+  );
+}
+
+function Guide({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2 font-medium"><Icon className="h-4 w-4 text-primary" /> {title}</div>
+      <div className="text-sm text-muted-foreground">{children}</div>
+    </div>
+  );
+}
+
 function SuggestList({ icon: Icon, title, items }: { icon: any; title: string; items: string[] }) {
+  if (!items?.length) return null;
   return (
     <div className="rounded-lg bg-secondary/40 p-4">
       <div className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Icon className="h-4 w-4 text-primary" /> {title}</div>

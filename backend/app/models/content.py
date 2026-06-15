@@ -78,6 +78,35 @@ class Challenge(Base):
     payload: Mapped[dict] = mapped_column(JSON, default=dict)  # question/options/answer
 
 
+class Checklist(Base):
+    __tablename__ = "checklists"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(60), default="workflow")
+    icon: Mapped[str] = mapped_column(String(40), default="ListChecks")
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+
+    items: Mapped[list["ChecklistItem"]] = relationship(
+        back_populates="checklist",
+        cascade="all, delete-orphan",
+        order_by="ChecklistItem.order_index",
+    )
+
+
+class ChecklistItem(Base):
+    __tablename__ = "checklist_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    checklist_id: Mapped[int] = mapped_column(ForeignKey("checklists.id"), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    order_index: Mapped[int] = mapped_column(Integer, default=0)
+
+    checklist: Mapped["Checklist"] = relationship(back_populates="items")
+
+
 class ReferenceChannel(Base):
     __tablename__ = "reference_channels"
 

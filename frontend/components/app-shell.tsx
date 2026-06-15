@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, ListChecks, Flame,
   ScanSearch, BookOpenCheck, Image as ImageIcon, Trophy, LogOut, Menu, X, Flame as FlameIcon,
+  ListTodo, BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/academy", label: "Learning Academy", icon: GraduationCap },
   { href: "/reference-channels", label: "Reference Channels", icon: Tv },
+  { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
+  { href: "/checklists", label: "Checklists", icon: ListTodo },
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
   { href: "/challenges", label: "Challenges", icon: Flame },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },

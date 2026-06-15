@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Flame, Zap, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { confettiBurst } from "@/lib/confetti";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +66,7 @@ function ChallengeCard({ challenge, onDone }: { challenge: Challenge; onDone: ()
     try {
       const res = await api<SubmitResult>(`/challenges/${challenge.id}/submit`, { method: "POST", body: { answer: choice } });
       setResult(res);
+      if (res.correct) confettiBurst();
       await refresh();
       onDone();
     } finally {

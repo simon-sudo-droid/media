@@ -6,11 +6,14 @@ from app.models.content import (
     QuizQuestion,
     Challenge,
     ReferenceChannel,
+    Checklist,
+    ChecklistItem,
 )
 from app.models.progress import (
     LessonCompletion,
     QuizAttempt,
     ChallengeCompletion,
+    ChecklistItemCompletion,
     ActivityLog,
 )
 
@@ -22,8 +25,11 @@ __all__ = [
     "QuizQuestion",
     "Challenge",
     "ReferenceChannel",
+    "Checklist",
+    "ChecklistItem",
     "LessonCompletion",
     "QuizAttempt",
     "ChallengeCompletion",
+    "ChecklistItemCompletion",
     "ActivityLog",
 ]

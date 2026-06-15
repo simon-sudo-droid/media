@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, XCircle, Zap, Loader2, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
+import { confettiBurst } from "@/lib/confetti";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ export default function QuizPage() {
     try {
       const res = await api<Result>(`/quizzes/${slug}/submit`, { method: "POST", body: { answers } });
       setResult(res);
+      if (res.total > 0 && res.score / res.total >= 0.6) confettiBurst();
       await refresh();
     } finally {
       setBusy(false);

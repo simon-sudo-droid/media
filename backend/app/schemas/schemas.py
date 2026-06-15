@@ -122,6 +122,32 @@ class ChallengeSubmission(BaseModel):
     answer: int  # selected option index
 
 
+class ChecklistItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    text: str
+    order_index: int
+    completed: bool = False
+
+
+class ChecklistOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    slug: str
+    title: str
+    description: str
+    category: str
+    icon: str
+    item_count: int = 0
+    completed_count: int = 0
+
+
+class ChecklistDetailOut(ChecklistOut):
+    items: list[ChecklistItemOut] = []
+
+
 class ReferenceChannelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -164,12 +190,24 @@ class ScriptRequest(BaseModel):
     script: str = Field(min_length=1, max_length=20000)
 
 
+class BrollGenPrompt(BaseModel):
+    label: str          # e.g. "Conceptual · Wide establishing"
+    shot_type: str      # establishing | cutaway | insert | reaction | atmospheric | ...
+    approach: str       # literal | conceptual
+    prompt: str         # ready-to-paste text-to-video prompt
+    resolution: str     # "3840x2160 (4K)" / "1920x1080 (1080p)"
+    duration: str       # e.g. "3–5s"
+
+
 class BrollScene(BaseModel):
     scene: str
     broll_ideas: list[str]
     camera_angles: list[str]
     motion_graphics: list[str]
     text_overlays: list[str]
+    concept_ideas: list[str] = []      # conceptual / non-literal visual options
+    shot_types: list[str] = []         # recommended shot-type mix for variety
+    gen_prompts: list[BrollGenPrompt] = []  # ready-to-render AI-video briefs
 
 
 class BrollResponse(BaseModel):

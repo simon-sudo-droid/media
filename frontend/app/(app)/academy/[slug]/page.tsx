@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Circle, Zap, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { confettiBurst } from "@/lib/confetti";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +66,8 @@ export default function CoursePage() {
   async function complete(lesson: Lesson) {
     setBusy(true);
     try {
-      await api(`/lessons/${lesson.id}/complete`, { method: "POST" });
+      const res = await api<{ already_completed: boolean }>(`/lessons/${lesson.id}/complete`, { method: "POST" });
+      if (!res.already_completed) confettiBurst();
       await load();
       await refresh();
     } finally {

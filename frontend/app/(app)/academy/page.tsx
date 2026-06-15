@@ -34,7 +34,7 @@ export default function AcademyPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <div>
+      <div className="animate-in">
         <h1 className="text-2xl font-bold tracking-tight">Learning Academy</h1>
         <p className="text-muted-foreground">Structured courses from foundations to cinematic mastery.</p>
       </div>
@@ -45,13 +45,13 @@ export default function AcademyPage() {
             <h2 className="text-lg font-semibold">{LEVEL_LABEL[group.level]}</h2>
             <div className="h-px flex-1 bg-border" />
           </div>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 stagger sm:grid-cols-2 lg:grid-cols-3">
             {group.items.map((c) => {
               const Icon = (Icons as any)[c.icon] || Icons.GraduationCap;
               const pct = c.lesson_count ? Math.round((c.completed_count / c.lesson_count) * 100) : 0;
               return (
                 <Link key={c.id} href={`/academy/${c.slug}`}>
-                  <Card className="h-full transition-colors hover:border-primary/40">
+                  <Card className="lift h-full">
                     <CardContent className="flex h-full flex-col p-6">
                       <div className="mb-4 flex items-start justify-between">
                         <div className="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary">
