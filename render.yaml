@@ -38,9 +38,9 @@ services:
     rootDir: frontend
     dockerfilePath: ./Dockerfile.render
     envVars:
-      # Baked into the client bundle at build time → points the browser at the API.
+      # Baked into the client bundle at BUILD time → points the browser at the API.
+      # Must be a literal value: Render does NOT resolve fromService/fromDatabase
+      # references during Docker builds, only at runtime — so a `host` reference
+      # would be empty at build and the bundle would fall back to localhost.
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: editmentor-api
-          type: web
-          property: host              # e.g. editmentor-api.onrender.com (api.ts adds https://)
+        value: https://editmentor-api.onrender.com
