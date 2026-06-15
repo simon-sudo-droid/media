@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(node --version)",
+      "Bash(python3 --version)",
+      "Bash(pnpm --version)",
+      "Bash(git status *)",
+      "Bash(npm --version)",
+      "Bash(echo \"NPM: $\\(npm --version 2>&1\\)\")",
+      "Bash(echo \"PNPM: $\\(pnpm --version 2>&1\\)\")",
+      "Bash(docker compose *)",
+      "Bash(echo \"DOCKER COMPOSE: $\\(docker compose version 2>&1\\)\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} in %{time_total}s\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"API   /health  -> HTTP %{http_code}\\\\n\" http://localhost:8000/health)",
+      "Bash(curl -s -o /dev/null -w \"WEB   /        -> HTTP %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"WEB   /login   -> HTTP %{http_code}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test@editmentor.ai\",\"password\":\"secret123\"}')",
+      "PowerShell($paths = @\\(\"$env:ProgramFiles\\\\Docker\\\\Docker\\\\resources\\\\bin\\\\docker.exe\", \"$env:ProgramFiles\\\\Docker\\\\Docker\\\\Docker Desktop.exe\", \"$env:LOCALAPPDATA\\\\Docker\\\\Docker\\\\resources\\\\bin\\\\docker.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { \"FOUND: $p\" } else { \"missing: $p\" } })",
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "PowerShell(\"Docker Desktop launch requested\")",
+      "Bash(tail -n 20 \"/c/Users/SIMONC~1/AppData/Local/Temp/claude/C--Users-Simon-Chao-Downloads-SImon-s-Project-2/288e0cdf-551a-46b1-ab7e-0db6bc071336/tasks/bjozpggs5.output\" 2>/dev/null || echo \"cannot read via bash\")",
+      "Bash(cd \"/c/Users/Simon Chao/Downloads/SImon's Project 2\" && find backend/app -name \"*.py\" | grep -iE \"auth|user|schema|security\" )",
+      "Bash(sed -n '74,96p' api/routes/content.py)",
+      "Bash(sed -n '51,90p' api/routes/quizzes.py)",
+      "Bash(sed -n '79,120p' api/routes/challenges.py)",
+      "WebSearch"
+    ]
+  }
+}

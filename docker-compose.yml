@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: editmentor_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-editmentor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-editmentor}
+      POSTGRES_DB: ${POSTGRES_DB:-editmentor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-editmentor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    container_name: editmentor_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-editmentor}:${POSTGRES_PASSWORD:-editmentor}@db:5432/${POSTGRES_DB:-editmentor}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  web:
+    build:
+      context: ./frontend
+    container_name: editmentor_web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Browser-side calls hit the host-published API port
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    # Production build → precompiled pages, fast navigation (no on-demand dev compile lag)
+    command: sh -c "npm run build && npm run start"
+
+volumes:
+  db_data:

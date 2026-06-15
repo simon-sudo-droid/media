@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark-mode-first premium SaaS palette */
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 7%;
+    --card-foreground: 0 0% 98%;
+    --primary: 263 85% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 6% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 6% 14%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 263 70% 18%;
+    --accent-foreground: 0 0% 98%;
+    --border: 240 6% 16%;
+    --input: 240 6% 16%;
+    --ring: 263 85% 65%;
+    --radius: 0.85rem;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Ambient glow used across landing + dashboard */
+.glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, hsl(263 85% 65% / 0.18), transparent 70%),
+    radial-gradient(40% 40% at 80% 20%, hsl(290 85% 60% / 0.12), transparent 70%);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, black, transparent);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, hsl(263 85% 75%), hsl(290 85% 70%), hsl(210 90% 70%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
