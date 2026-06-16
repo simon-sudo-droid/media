@@ -21,15 +21,15 @@ export default function QuizzesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
-      <div>
+      <div className="animate-in">
         <h1 className="text-2xl font-bold tracking-tight">Quizzes</h1>
-        <p className="text-muted-foreground">Test your knowledge and earn XP. 25 XP per correct answer.</p>
+        <p className="text-muted-foreground">Test your knowledge and earn XP — 25 XP per correct answer. Bragging rights sold separately. 🧠</p>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-5 stagger sm:grid-cols-2 lg:grid-cols-3">
         {quizzes.map((q) => (
           <Link key={q.id} href={`/quizzes/${q.slug}`}>
-            <Card className="h-full transition-colors hover:border-primary/40">
+            <Card className="lift h-full">
               <CardContent className="flex h-full flex-col p-6">
                 <div className="mb-4 flex items-start justify-between">
                   <div className="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary">

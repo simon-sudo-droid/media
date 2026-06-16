@@ -25,7 +25,7 @@ export default function ChecklistsPage() {
     <div className="mx-auto max-w-6xl space-y-7">
       <div className="animate-in">
         <h1 className="text-2xl font-bold tracking-tight">Checklists</h1>
-        <p className="text-muted-foreground">Production workflows — tick off each step and track your progress.</p>
+        <p className="text-muted-foreground">Production workflows — tick off each step and feel that sweet, sweet dopamine. ✅</p>
       </div>
 
       <div className="grid gap-5 stagger sm:grid-cols-2 lg:grid-cols-3">

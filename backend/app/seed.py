@@ -356,6 +356,117 @@ QUIZZES = [
              "HDR offers far more highlight range, so you grade brightness and specular detail differently."),
         ],
     },
+    {
+        "slug": "broll-visual-storytelling", "title": "B-roll & Visual Storytelling",
+        "topic": "B-roll", "level": "advanced",
+        "description": "Shot types, variety, and conceptual (non-literal) visuals.",
+        "questions": [
+            ("The main reason to mix wide, medium, and close-up shots is to…",
+             ["Use more storage", "Keep the sequence dynamic and avoid repetition",
+              "Fill the timeline", "Match the audio length"], 1,
+             "Even with AI/stock footage, intentional variety keeps videos engaging."),
+            ("An establishing shot is…",
+             ["A tight close-up of a face", "A wide frame at the start showing where the action happens",
+              "A graphic overlay", "A reaction shot"], 1,
+             "Establishing shots orient the audience to the location/context."),
+            ("A cutaway is…",
+             ["The final shot of a video", "A brief clip to a related object/action (e.g. a ringing phone)",
+              "A color preset", "A type of transition"], 1,
+             "Cutaways briefly interrupt the main footage and help hide edits."),
+            ("Inserts and close-ups are used to…",
+             ["Show the whole room", "Isolate a specific element or gesture to highlight detail",
+              "Establish location", "Add background music"], 1,
+             "Tight shots draw attention to important details."),
+            ("A reaction shot captures…",
+             ["A scripted monologue", "Genuine, unscripted responses or expressions from participants",
+              "A wide landscape", "On-screen text"], 1,
+             "Reactions add authenticity and emotional connection."),
+            ("Atmospheric / ambient shots are mainly used to…",
+             ["State a statistic", "Capture mood, setting, and environmental cues",
+              "Show a product close-up", "Replace dialogue"], 1,
+             "Observational footage sets tone and place."),
+            ("Supporting shots are…",
+             ["Abstract metaphors", "Literal footage describing exactly what's being said",
+              "Archival clips", "Reaction shots"], 1,
+             "E.g. showing the pan while the host describes the recipe."),
+            ("Narrative b-roll refers to…",
+             ["Stock clips with no meaning", "Artistic/metaphorical shots that tell a story — a visual 'subplot'",
+              "Lower-thirds", "Establishing shots only"], 1,
+             "Narrative b-roll communicates visually, often in metaphors."),
+            ("Archival footage is…",
+             ["Footage you shot today", "Historical imagery used for context or stories about the past",
+              "A type of LUT", "Royalty-free music"], 1,
+             "Archival material supports historical or past-tense narratives."),
+            ("Practical inserts are…",
+             ["Drone shots", "Visual aids like written text, diagrams, or printouts",
+              "Crowd reactions", "Slow-motion clips"], 1,
+             "They add an informative, personal touch."),
+            ("Script line: 'you need to stay focused to succeed.' The strongest CONCEPTUAL visual is…",
+             ["Someone typing at a desk", "Someone blocking out distractions / a clean-vs-messy desk / blurred background",
+              "A city skyline", "A logo animation"], 1,
+             "Conceptual visuals represent the idea (focus), not the literal words."),
+            ("Script line: 'growth takes time.' A strong conceptual visual would be…",
+             ["A bar chart only", "A plant growing, a timelapse, or calendar pages flipping",
+              "A person talking to camera", "A spinning logo"], 1,
+             "Show the feeling of gradual growth, not just a literal chart."),
+            ("Thinking conceptually instead of only literally tends to…",
+             ["Limit your options", "Unlock more creative options and avoid repetitive visuals",
+              "Slow the export", "Reduce engagement"], 1,
+             "Literal-only thinking is limiting; conceptual thinking expands choices."),
+        ],
+    },
+    {
+        "slug": "editing-workflows", "title": "Editing Workflows & Delivery Specs",
+        "topic": "Workflow", "level": "intermediate",
+        "description": "The checklists: clips, leadership reels, and podcast audio specs.",
+        "questions": [
+            ("Target loudness when adjusting podcast audio levels is…",
+             ["-6 LUFS", "-16 LUFS", "0 LUFS", "-40 LUFS"], 1,
+             "The podcast audio checklist targets -16 LUFS loudness."),
+            ("Approved MP3 export setting for the podcast series is…",
+             ["320 kbps stereo only", "128 kbps mono or 192 kbps stereo",
+              "64 kbps mono", "Uncompressed WAV"], 1,
+             "Export to MP3 — 128 kbps mono or 192 kbps stereo."),
+            ("The correct podcast file-naming format is…",
+             ["final_FINAL_v2.mp3", "episode-title-ep-number.mp3",
+              "podcast.mp3", "audio_export.mp3"], 1,
+             "Name files: episode-title-ep-number.mp3."),
+            ("Monthly Leadership Reels should stay within…",
+             ["15–20 seconds", "60–90 seconds", "3–5 minutes", "Exactly 2 minutes"], 1,
+             "Keep final length within 60–90 seconds."),
+            ("In the Leadership Reels workflow, the avatar segment is generated with…",
+             ["Midjourney", "HeyGen", "Premiere", "Audacity"], 1,
+             "Generate the HeyGen avatar segment."),
+            ("First step when making Boardroom x Prayer Room podcast clips is…",
+             ["Add music", "Select and trim the best 1–2 min clips from the full episode",
+              "Export to MP3", "Upload immediately"], 1,
+             "Start by selecting and trimming the strongest 1–2 minute clips."),
+            ("'Filler words' to remove include…",
+             ["Names and dates", "Ums, uhs, and repeated phrases",
+              "Key points", "Calls to action"], 1,
+             "Removing ums/uhs/repeats tightens the edit."),
+            ("For podcast clips, after trimming you should next…",
+             ["Print the script", "Add auto-captions",
+              "Change the aspect ratio to 4:3", "Delete the audio"], 1,
+             "Add auto-captions so clips work sound-off."),
+            ("To remove background hiss/hum in podcast audio you…",
+             ["Boost the bass", "Apply noise reduction / remove background noise",
+              "Increase loudness to 0 dB", "Add reverb"], 1,
+             "Noise reduction cleans up the recording."),
+            ("Besides filler words, the audio checklist removes…",
+             ["All music", "Long silences and dead air",
+              "The intro", "Every breath"], 1,
+             "Cut long silences and dead air to keep pace."),
+            ("The final step of the podcast audio checklist is…",
+             ["Upload right away", "Do a final listen-through to catch any remaining errors",
+              "Add more music", "Re-record the episode"], 1,
+             "Always do a final listen-through before delivery."),
+            ("In the Leadership Reels workflow, right after generating the avatar you…",
+             ["Export immediately", "Source and sync relevant b-roll footage",
+              "Add 5 minutes of intro", "Switch to 4:3"], 1,
+             "Source and sync relevant b-roll, then add subtitles."),
+        ],
+    },
 ]
 
 
@@ -626,16 +737,19 @@ def run_seed() -> None:
                     )
                 db.add(course)
 
-        if db.scalar(select(func.count()).select_from(Quiz)) == 0:
-            for q in QUIZZES:
-                quiz = Quiz(slug=q["slug"], title=q["title"], topic=q["topic"],
-                            level=q["level"], description=q["description"])
-                for prompt, options, correct, explanation in q["questions"]:
-                    quiz.questions.append(
-                        QuizQuestion(prompt=prompt, options=options,
-                                     correct_index=correct, explanation=explanation)
-                    )
-                db.add(quiz)
+        # Per-slug so newly added quizzes get seeded on deploy without a DB wipe.
+        existing_quiz_slugs = set(db.scalars(select(Quiz.slug)).all())
+        for q in QUIZZES:
+            if q["slug"] in existing_quiz_slugs:
+                continue
+            quiz = Quiz(slug=q["slug"], title=q["title"], topic=q["topic"],
+                        level=q["level"], description=q["description"])
+            for prompt, options, correct, explanation in q["questions"]:
+                quiz.questions.append(
+                    QuizQuestion(prompt=prompt, options=options,
+                                 correct_index=correct, explanation=explanation)
+                )
+            db.add(quiz)
 
         if db.scalar(select(func.count()).select_from(Challenge)) == 0:
             for ch in CHALLENGES:
