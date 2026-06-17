@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Sparkles, Brain, Trophy, Gauge, Palette, AudioLines, Type, Film,
-  ScanSearch, Check, Star, ArrowRight, Quote,
+  ScanSearch, Star, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,25 +23,6 @@ const ACADEMIES = [
   { icon: Film, label: "Cinematic" },
   { icon: Gauge, label: "Pacing" },
   { icon: ScanSearch, label: "B-roll" },
-];
-
-const TESTIMONIALS = [
-  { name: "Maya R.", role: "Freelance Editor", text: "Like Duolingo for editing. The daily challenges rewired how I think about cuts." },
-  { name: "Daniel K.", role: "YouTube Creator", text: "The Script-to-B-roll tool alone saves me an hour per video. Wild." },
-  { name: "Priya S.", role: "Agency Editor", text: "Finally a structured path from 'good enough' to genuinely cinematic." },
-];
-
-const PRICING = [
-  { name: "Starter", price: "$0", tagline: "Everything, for everyone", features: ["All Foundations courses", "Daily challenges", "Unlimited AI tools", "Full progress tracking"], cta: "Get started free", highlight: false },
-  { name: "Pro", price: "$0", tagline: "Free — no upgrade needed", features: ["All academies & courses", "Unlimited AI coaching", "Storytelling & Slide analyzers", "Leaderboards & badges", "Every new feature"], cta: "Get started free", highlight: true },
-  { name: "Teams", price: "$0", tagline: "Free for studios & agencies", features: ["Everything in Pro", "Team progress dashboards", "Shared challenge sets", "Seats & roles", "Onboarding support"], cta: "Get started free", highlight: false },
-];
-
-const FAQ = [
-  { q: "Do I need editing software to use EditMentor AI?", a: "No. EditMentor trains your editing decision-making and eye. You can apply what you learn in any editor — Premiere, DaVinci, Final Cut, CapCut." },
-  { q: "Is it really like Duolingo for editing?", a: "Yes — short daily challenges, streaks, XP and levels keep you improving a little every day instead of cramming." },
-  { q: "What do the AI tools do?", a: "Paste a script for instant b-roll and shot suggestions, get your storytelling scored, and have your slides critiqued — all with actionable feedback." },
-  { q: "Can I use it for free?", a: "Yes — everything is free. All courses, academies, quizzes, challenges, and AI tools are fully unlocked for every account. No paid plans, no credit card." },
 ];
 
 function Logo() {
@@ -69,8 +50,6 @@ export default function LandingPage() {
           <Logo />
           <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#features" className="hover:text-foreground">Features</a>
-            <a href="#pricing" className="hover:text-foreground">Pricing</a>
-            <a href="#faq" className="hover:text-foreground">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/login"><Button variant="ghost" size="sm">Log in</Button></Link>
@@ -134,88 +113,6 @@ export default function LandingPage() {
               <div key={a.label} className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm">
                 <a.icon className="h-4 w-4 text-primary" /> {a.label} Academy
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="relative z-10 border-t border-border/60 py-24">
-        <div className="container">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Editors are leveling up</h2>
-          </div>
-          <div className="mt-14 grid gap-5 md:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <Card key={t.name}>
-                <CardContent className="p-6">
-                  <Quote className="h-6 w-6 text-primary/60" />
-                  <p className="mt-4 text-sm leading-relaxed text-foreground/90">“{t.text}”</p>
-                  <div className="mt-5">
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-sm text-muted-foreground">{t.role}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="relative z-10 border-t border-border/60 py-24">
-        <div className="container">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">100% free, forever</h2>
-            <p className="mt-4 text-muted-foreground">Every feature, every academy, every AI tool — no paywalls, no credit card, ever.</p>
-          </div>
-          <div className="mt-14 grid gap-6 md:grid-cols-3">
-            {PRICING.map((p) => (
-              <Card key={p.name} className={p.highlight ? "relative border-primary/60 shadow-xl shadow-primary/10" : ""}>
-                {p.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge variant="default">Recommended</Badge>
-                  </div>
-                )}
-                <CardContent className="p-7">
-                  <h3 className="font-semibold">{p.name}</h3>
-                  <p className="text-sm text-muted-foreground">{p.tagline}</p>
-                  <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-4xl font-bold">{p.price}</span>
-                    <span className="text-muted-foreground">forever</span>
-                  </div>
-                  <ul className="mt-6 space-y-3 text-sm">
-                    {p.features.map((feat) => (
-                      <li key={feat} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {feat}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/signup" className="mt-7 block">
-                    <Button variant={p.highlight ? "gradient" : "outline"} className="w-full">{p.cta}</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="relative z-10 border-t border-border/60 py-24">
-        <div className="container max-w-3xl">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Frequently asked questions</h2>
-          </div>
-          <div className="mt-12 space-y-3">
-            {FAQ.map((item) => (
-              <details key={item.q} className="group rounded-xl border border-border bg-card p-5">
-                <summary className="flex cursor-pointer items-center justify-between font-medium">
-                  {item.q}
-                  <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-90" />
-                </summary>
-                <p className="mt-3 text-sm text-muted-foreground">{item.a}</p>
-              </details>
             ))}
           </div>
         </div>

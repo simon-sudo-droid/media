@@ -3,8 +3,28 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light theme (default for :root) */
   :root {
-    /* Dark-mode-first premium SaaS palette */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+    --primary: 263 80% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 12%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 42%;
+    --accent: 263 70% 94%;
+    --accent-foreground: 263 70% 28%;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 263 80% 58%;
+    --radius: 0.85rem;
+  }
+
+  /* Dark theme (premium dark-first palette) — applied via .dark on <html> */
+  .dark {
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
     --card: 240 8% 7%;

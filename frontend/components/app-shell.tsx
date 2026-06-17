@@ -6,12 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, ListChecks, Flame,
   ScanSearch, BookOpenCheck, Image as ImageIcon, Trophy, LogOut, Menu, X, Flame as FlameIcon,
-  ListTodo, BadgeCheck,
+  ListTodo, BadgeCheck, Wrench,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NotificationsBell } from "@/components/notifications-bell";
+import { AccountMenu } from "@/components/account-menu";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -21,6 +23,7 @@ const NAV = [
   { href: "/checklists", label: "Checklists", icon: ListTodo },
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
   { href: "/challenges", label: "Challenges", icon: Flame },
+  { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 
@@ -123,6 +126,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Badge variant="default" className="gap-1.5 px-3 py-1 text-sm">
               {user.xp.toLocaleString()} XP
             </Badge>
+            <NotificationsBell />
+            <AccountMenu />
           </div>
         </header>
 

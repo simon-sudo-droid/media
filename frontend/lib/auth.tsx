@@ -19,6 +19,7 @@ type AuthCtx = {
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
+  switchAccount: () => void;
   refresh: () => Promise<void>;
 };
 
@@ -79,8 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/");
   }
 
+  // No multi-session support yet: switching accounts signs out and returns to login.
+  function switchAccount() {
+    clearToken();
+    setUser(null);
+    router.push("/login");
+  }
+
   return (
-    <Ctx.Provider value={{ user, loading, login, signup, logout, refresh: loadUser }}>
+    <Ctx.Provider value={{ user, loading, login, signup, logout, switchAccount, refresh: loadUser }}>
       {children}
     </Ctx.Provider>
   );
