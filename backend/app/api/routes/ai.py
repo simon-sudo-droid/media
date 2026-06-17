@@ -6,6 +6,8 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas.schemas import (
     BrollResponse,
+    BrollVideoJob,
+    BrollVideoRequest,
     ScriptRequest,
     SlideAnalysisRequest,
     SlideAnalysisResponse,
@@ -33,6 +35,27 @@ def script_to_broll(
     result = ai_service.generate_broll(body.script)
     _log_use(db, user, "Used AI Script-to-B-roll generator")
     return result
+
+
+@router.post("/broll/video", response_model=BrollVideoJob)
+def broll_video_start(
+    body: BrollVideoRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    # Starts a Veo clip job (or returns an instant storyboard fallback). No XP:
+    # a sample clip is a repeatable sub-action of /broll, so awarding per call
+    # would let it be farmed.
+    return ai_service.start_broll_video(body.prompt, body.label, body.aspect_ratio)
+
+
+@router.get("/broll/video/{job_id}", response_model=BrollVideoJob)
+def broll_video_status(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return ai_service.poll_broll_video(job_id)
 
 
 @router.post("/storytelling", response_model=StorytellingResponse)

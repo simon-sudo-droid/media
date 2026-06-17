@@ -26,7 +26,9 @@ services:
       - key: JWT_SECRET
         generateValue: true          # strong random secret
       - key: AI_PROVIDER
-        value: mock                   # set to "openai"/"claude" + add a key to go live
+        value: mock                   # set to "openai"/"claude"/"gemini" + add a key to go live
+      - key: GEMINI_API_KEY
+        sync: false                   # set in the Render dashboard (do not commit secrets)
       - key: CORS_ORIGINS
         value: "*"                    # Bearer-token auth, so wildcard is safe here
 

@@ -208,11 +208,27 @@ class BrollScene(BaseModel):
     concept_ideas: list[str] = []      # conceptual / non-literal visual options
     shot_types: list[str] = []         # recommended shot-type mix for variety
     gen_prompts: list[BrollGenPrompt] = []  # ready-to-render AI-video briefs
+    stock_queries: list[str] = []      # search/generation terms for Storyblocks etc.
 
 
 class BrollResponse(BaseModel):
     provider: str
     scenes: list[BrollScene]
+
+
+class BrollVideoRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=4000)
+    label: str = Field(default="", max_length=200)
+    aspect_ratio: str = Field(default="16:9", max_length=12)
+
+
+class BrollVideoJob(BaseModel):
+    job_id: str                   # poll GET /ai/broll/video/{job_id}; "" if instant
+    status: str                   # pending | done | error
+    provider: str                 # gemini | mock
+    kind: str = "video"           # video (Veo) | storyboard (fallback)
+    data_url: str = ""            # mp4/svg data URL when status == done
+    error: str = ""
 
 
 class StoryScore(BaseModel):

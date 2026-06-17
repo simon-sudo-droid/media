@@ -8,8 +8,12 @@ with zero spend and zero keys.
 
 To wire a real provider later: set AI_PROVIDER + the matching key in .env.
 """
+import base64
+import html
 import json
 import re
+import textwrap
+import uuid
 
 from app.core.config import settings
 
@@ -142,6 +146,12 @@ def _mock_broll(script: str) -> dict:
                     "Add a reaction or cutaway to cover edits and keep momentum",
                 ],
                 "gen_prompts": gen_prompts,
+                "stock_queries": [
+                    f"{kw[0]} cinematic" if kw else "cinematic b-roll",
+                    f"{kw[0]} close up" if kw else "close up detail",
+                    f"{kw[-1]} wide shot" if len(kw) > 1 else f"{kw[0]} wide shot" if kw else "wide establishing shot",
+                    concept.split("(")[0].strip(),
+                ],
             }
         )
     return {"provider": "mock", "scenes": out}
@@ -308,6 +318,23 @@ def _call_llm_json(system: str, user: str) -> dict | None:
             text = resp.json()["content"][0]["text"]
             match = re.search(r"\{.*\}", text, re.S)
             return json.loads(match.group(0)) if match else None
+
+        if provider == "gemini" and settings.GEMINI_API_KEY:
+            resp = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{settings.GEMINI_MODEL}:generateContent",
+                params={"key": settings.GEMINI_API_KEY},
+                json={
+                    "system_instruction": {"parts": [{"text": system}]},
+                    "contents": [{"role": "user", "parts": [{"text": user}]}],
+                    "generationConfig": {"response_mime_type": "application/json"},
+                },
+                timeout=45,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+            match = re.search(r"\{.*\}", text, re.S)
+            return json.loads(match.group(0)) if match else None
     except Exception:
         return None
     return None
@@ -323,6 +350,7 @@ def generate_broll(script: str) -> dict:
         "CONCEPTUAL/non-literal visuals (show the idea/feeling, not the words). "
         "Return JSON: {scenes:[{scene, broll_ideas[], camera_angles[], "
         "motion_graphics[], text_overlays[], concept_ideas[], shot_types[], "
+        "stock_queries[] (short search/generation terms for stock libraries), "
         "gen_prompts:[{label, shot_type, approach, prompt, resolution, duration}]}]}.",
         script,
     )
@@ -330,6 +358,227 @@ def generate_broll(script: str) -> dict:
         result["provider"] = settings.AI_PROVIDER
         return result
     return _mock_broll(script)
+
+
+def _storyboard_frame(prompt: str, label: str = "") -> str:
+    """Deterministic animated storyboard frame (SVG data URL) — the zero-spend
+    fallback when no image provider is configured. The subtle Ken-Burns scale +
+    blinking REC dot make it read as a sample clip rather than a static slide."""
+    safe_label = html.escape((label or "Sample b-roll").strip())[:60]
+    lines = textwrap.wrap((prompt or "Sample b-roll frame").strip(), width=46)[:7]
+    tspans = "".join(
+        f'<tspan x="90" dy="{0 if i == 0 else 40}">{html.escape(line)}</tspan>'
+        for i, line in enumerate(lines)
+    )
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">'
+        '<defs>'
+        '<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#1e1b4b"/>'
+        '<stop offset="0.55" stop-color="#111827"/>'
+        '<stop offset="1" stop-color="#0f172a"/>'
+        '</linearGradient>'
+        '<radialGradient id="glow" cx="0.5" cy="0.42" r="0.6">'
+        '<stop offset="0" stop-color="#6366f1" stop-opacity="0.45"/>'
+        '<stop offset="1" stop-color="#6366f1" stop-opacity="0"/>'
+        '</radialGradient>'
+        '</defs>'
+        '<rect width="1280" height="720" fill="#0b1020"/>'
+        '<g>'
+        '<animateTransform attributeName="transform" type="scale" '
+        'values="1;1.06;1" dur="8s" repeatCount="indefinite" additive="sum"/>'
+        '<rect width="1280" height="720" fill="url(#bg)"/>'
+        '<rect width="1280" height="720" fill="url(#glow)"/>'
+        '</g>'
+        # film sprocket bars
+        '<rect x="0" y="0" width="1280" height="34" fill="#000" opacity="0.55"/>'
+        '<rect x="0" y="686" width="1280" height="34" fill="#000" opacity="0.55"/>'
+        + "".join(
+            f'<rect x="{x}" y="10" width="26" height="14" rx="3" fill="#1f2937"/>'
+            f'<rect x="{x}" y="696" width="26" height="14" rx="3" fill="#1f2937"/>'
+            for x in range(24, 1280, 60)
+        )
+        # center play glyph
+        + '<circle cx="640" cy="330" r="64" fill="#ffffff" opacity="0.12"/>'
+        '<path d="M620 300 L676 330 L620 360 Z" fill="#ffffff" opacity="0.85"/>'
+        # REC indicator (blinking)
+        '<circle cx="92" cy="64" r="9" fill="#ef4444">'
+        '<animate attributeName="opacity" values="1;0.2;1" dur="1.4s" '
+        'repeatCount="indefinite"/></circle>'
+        '<text x="112" y="70" font-family="Arial, sans-serif" font-size="22" '
+        'font-weight="700" fill="#f8fafc">REC · SAMPLE</text>'
+        # label chip
+        f'<text x="1188" y="70" text-anchor="end" font-family="Arial, sans-serif" '
+        f'font-size="22" font-weight="600" fill="#a5b4fc">{safe_label}</text>'
+        # wrapped prompt at lower third
+        f'<text x="90" y="468" font-family="Arial, sans-serif" font-size="30" '
+        f'font-weight="500" fill="#e2e8f0">{tspans}</text>'
+        '</svg>'
+    )
+    b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{b64}"
+
+
+# ─────────────────────────────────────────────────────────────
+# B-roll sample CLIP generation (Google Veo, async job + poll)
+# ─────────────────────────────────────────────────────────────
+# Veo is a long-running operation (a clip takes ~1-2 min), so we start the job,
+# hand the frontend a job_id, and let it poll. Jobs live in-process — fine for a
+# single-instance demo. When Veo isn't available (no key, or the key lacks the
+# paid Veo tier) we fall back to the animated storyboard frame so the feature
+# always produces *something*.
+_VIDEO_JOBS: dict[str, dict] = {}
+_VIDEO_JOBS_MAX = 50
+_GENAI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+
+
+def _veo_start(prompt: str, aspect_ratio: str = "16:9") -> str | None:
+    """Kick off a Veo generation. Returns the long-running operation name."""
+    try:
+        import httpx
+
+        resp = httpx.post(
+            f"{_GENAI_BASE}/models/{settings.VEO_MODEL}:predictLongRunning",
+            params={"key": settings.GEMINI_API_KEY},
+            json={
+                "instances": [{"prompt": prompt}],
+                "parameters": {"aspectRatio": aspect_ratio, "numberOfVideos": 1},
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json().get("name")
+    except Exception:
+        return None
+
+
+def _veo_operation(op_name: str) -> dict | None:
+    """Fetch a long-running operation. None on transient/network error."""
+    try:
+        import httpx
+
+        resp = httpx.get(
+            f"{_GENAI_BASE}/{op_name}",
+            params={"key": settings.GEMINI_API_KEY},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return None
+
+
+def _extract_video(response: dict) -> tuple[str | None, str | None]:
+    """Walk a Veo operation response for a video URI or inline base64 bytes.
+    Robust to the schema differences between Veo 2/3 (generatedSamples vs
+    generatedVideos, uri vs videoUri, etc.). Returns (uri, base64_bytes)."""
+    found = {"uri": None, "b64": None}
+
+    def walk(o) -> None:
+        if found["uri"] or found["b64"]:
+            return
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if found["uri"] or found["b64"]:
+                    return
+                if k in ("uri", "videoUri") and isinstance(v, str) and v.startswith("http"):
+                    found["uri"] = v
+                    return
+                if k in ("bytesBase64Encoded", "videoBytes") and isinstance(v, str) and v:
+                    found["b64"] = v
+                    return
+                walk(v)
+        elif isinstance(o, list):
+            for it in o:
+                walk(it)
+
+    walk(response or {})
+    return found["uri"], found["b64"]
+
+
+def _download_video(uri: str) -> str | None:
+    """Download a Veo file URI (needs the API key) → an mp4 data URL."""
+    try:
+        import httpx
+
+        resp = httpx.get(
+            uri,
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+            timeout=180,
+            follow_redirects=True,
+        )
+        resp.raise_for_status()
+        b64 = base64.b64encode(resp.content).decode("ascii")
+        return f"data:video/mp4;base64,{b64}"
+    except Exception:
+        return None
+
+
+def _video_job_view(job_id: str, job: dict) -> dict:
+    return {
+        "job_id": job_id,
+        "status": job["status"],
+        "provider": job.get("provider", "gemini"),
+        "kind": job.get("kind", "video"),
+        "data_url": job.get("data_url", ""),
+        "error": job.get("error", ""),
+    }
+
+
+def start_broll_video(prompt: str, label: str = "", aspect_ratio: str = "16:9") -> dict:
+    """Start a Veo clip job. Falls back to an instant storyboard frame when Veo
+    is unavailable (not gemini / no key / start failed)."""
+    prompt = (prompt or "").strip()
+    if settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
+        op = _veo_start(prompt, aspect_ratio)
+        if op:
+            if len(_VIDEO_JOBS) >= _VIDEO_JOBS_MAX:
+                _VIDEO_JOBS.pop(next(iter(_VIDEO_JOBS)))  # evict oldest
+            job_id = uuid.uuid4().hex
+            _VIDEO_JOBS[job_id] = {
+                "op": op, "status": "pending", "provider": "gemini",
+                "kind": "video", "prompt": prompt, "label": label,
+            }
+            return _video_job_view(job_id, _VIDEO_JOBS[job_id])
+    # Fallback: instant storyboard preview, already "done".
+    return {
+        "job_id": "", "status": "done", "provider": "mock",
+        "kind": "storyboard", "data_url": _storyboard_frame(prompt, label),
+        "error": "",
+    }
+
+
+def poll_broll_video(job_id: str) -> dict:
+    """Advance a Veo job: check the operation, download the clip when ready."""
+    job = _VIDEO_JOBS.get(job_id)
+    if not job:
+        return {
+            "job_id": job_id, "status": "error", "provider": "gemini",
+            "kind": "video", "data_url": "",
+            "error": "Unknown or expired job.",
+        }
+    if job["status"] in ("done", "error"):
+        return _video_job_view(job_id, job)
+
+    op = _veo_operation(job["op"])
+    if op is None or not op.get("done"):
+        return _video_job_view(job_id, job)  # still pending / transient error
+
+    if op.get("error"):
+        job["status"] = "error"
+        job["error"] = str(op["error"].get("message") or "Veo generation failed.")
+        return _video_job_view(job_id, job)
+
+    uri, b64 = _extract_video(op.get("response", {}))
+    data_url = f"data:video/mp4;base64,{b64}" if b64 else (_download_video(uri) if uri else None)
+    if data_url:
+        job["status"] = "done"
+        job["kind"] = "video"
+        job["data_url"] = data_url
+    else:
+        job["status"] = "error"
+        job["error"] = "The clip finished but no playable media was returned."
+    return _video_job_view(job_id, job)
 
 
 def analyze_storytelling(script: str) -> dict:
@@ -355,8 +604,12 @@ def analyze_slides(notes: str, image_base64: str | None = None) -> dict:
         except Exception:
             metrics = None
 
-    # Live vision provider (best effort). Only OpenAI path supports images here.
-    if image_base64 and settings.AI_PROVIDER == "openai" and settings.OPENAI_API_KEY:
+    # Live vision provider (best effort). OpenAI and Gemini support images.
+    _vision_ready = (
+        (settings.AI_PROVIDER == "openai" and settings.OPENAI_API_KEY)
+        or (settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY)
+    )
+    if image_base64 and _vision_ready:
         live = _call_vision_json(notes, image_base64)
         if live and "suggestions" in live:
             live["provider"] = settings.AI_PROVIDER
@@ -383,12 +636,44 @@ def analyze_slides(notes: str, image_base64: str | None = None) -> dict:
     return _mock_slides(notes)
 
 
+_VISION_SYSTEM = (
+    "You are a presentation-design critic. Return ONLY JSON: {first_impression, "
+    "layout, typography, clarity, consistency, suggestions:[{title, detail, impact}]} "
+    "with 3-5 suggestions ranked by impact."
+)
+
+
 def _call_vision_json(notes: str, image_base64: str) -> dict | None:
-    """Send the image to an OpenAI vision model and parse a JSON object."""
+    """Send the image to a vision model (OpenAI or Gemini) and parse JSON."""
     try:
         import httpx
 
         data = image_base64.strip()
+
+        if settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
+            raw = data.split(",", 1)[1] if data.startswith("data:") else data
+            mime = "image/png"
+            if data.startswith("data:"):
+                mime = data[5:].split(";", 1)[0] or "image/png"
+            resp = httpx.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{settings.GEMINI_MODEL}:generateContent",
+                params={"key": settings.GEMINI_API_KEY},
+                json={
+                    "system_instruction": {"parts": [{"text": _VISION_SYSTEM}]},
+                    "contents": [{"role": "user", "parts": [
+                        {"text": notes or "Critique this slide."},
+                        {"inline_data": {"mime_type": mime, "data": raw}},
+                    ]}],
+                    "generationConfig": {"response_mime_type": "application/json"},
+                },
+                timeout=60,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+            match = re.search(r"\{.*\}", text, re.S)
+            return json.loads(match.group(0)) if match else None
+
         if not data.startswith("data:"):
             data = f"data:image/png;base64,{data}"
         resp = httpx.post(

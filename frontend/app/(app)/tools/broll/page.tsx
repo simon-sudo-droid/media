@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ScanSearch, Loader2, Camera, Clapperboard, Type, Film, Sparkles,
-  Lightbulb, Shuffle, Copy, Check, Download, Wand2, Info,
+  Lightbulb, Shuffle, Copy, Check, Download, Wand2, Info, Video, ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -21,7 +21,11 @@ type Scene = {
   scene: string; broll_ideas: string[]; camera_angles: string[];
   motion_graphics: string[]; text_overlays: string[];
   concept_ideas?: string[]; shot_types?: string[]; gen_prompts?: GenPrompt[];
+  stock_queries?: string[];
 };
+
+const storyblocksUrl = (q: string) =>
+  `https://www.storyblocks.com/video/search/${encodeURIComponent(q.trim().toLowerCase().replace(/\s+/g, "-"))}`;
 type Resp = { provider: string; scenes: Scene[] };
 
 const SAMPLE = `Most people think editing is about cutting clips together. It's not.
@@ -186,6 +190,27 @@ export default function BrollPage() {
                     </div>
                   </div>
                 )}
+
+                {(s.stock_queries?.length ?? 0) > 0 && (
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
+                      <Video className="h-4 w-4 text-emerald-400" /> Generate real b-roll in Storyblocks
+                      <Badge variant="success" className="gap-1">4K / 1080p</Badge>
+                    </div>
+                    <p className="mb-3 text-xs text-muted-foreground">
+                      One click opens Storyblocks with these search/generation terms — render with Storyblocks AI or
+                      pick a clip, then download in 4K or 1080p. (Terms apply the variety + conceptual principles above.)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {s.stock_queries!.map((q, qi) => (
+                        <a key={qi} href={storyblocksUrl(q)} target="_blank" rel="noopener noreferrer"
+                           className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20">
+                          {q} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -195,11 +220,59 @@ export default function BrollPage() {
   );
 }
 
+type VideoJob = {
+  job_id: string;
+  status: "pending" | "done" | "error";
+  provider: string;
+  kind: string;        // video | storyboard
+  data_url: string;
+  error?: string;
+};
+
+const POLL_MS = 5000;
+const MAX_POLLS = 72; // ~6 minutes
+
 function GenPromptCard({ g }: { g: GenPrompt }) {
   const [copied, setCopied] = useState(false);
+  const [job, setJob] = useState<VideoJob | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alive = useRef(true);
+
+  useEffect(() => () => { alive.current = false; if (timer.current) clearTimeout(timer.current); }, []);
+
   async function copy() {
     try { await navigator.clipboard.writeText(g.prompt); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   }
+
+  function schedulePoll(jobId: string, n: number) {
+    if (n > MAX_POLLS) { setErr("Timed out waiting for the clip. Try again."); setBusy(false); return; }
+    timer.current = setTimeout(async () => {
+      if (!alive.current) return;
+      try {
+        const res = await api<VideoJob>(`/ai/broll/video/${jobId}`);
+        if (!alive.current) return;
+        if (res.status === "pending") { schedulePoll(jobId, n + 1); return; }
+        if (res.status === "error") { setErr(res.error || "Generation failed."); setBusy(false); return; }
+        setJob(res); setBusy(false);
+      } catch {
+        schedulePoll(jobId, n + 1); // transient — keep polling
+      }
+    }, POLL_MS);
+  }
+
+  async function genVideo() {
+    setBusy(true); setErr(""); setJob(null);
+    try {
+      const res = await api<VideoJob>("/ai/broll/video", { method: "POST", body: { prompt: g.prompt, label: g.label } });
+      if (res.status === "done") { setJob(res); setBusy(false); return; }   // instant storyboard fallback
+      if (res.status === "error") { setErr(res.error || "Couldn’t start generation."); setBusy(false); return; }
+      schedulePoll(res.job_id, 0);
+    } catch { setErr("Couldn’t start generation — try again."); setBusy(false); }
+  }
+
+  const isVideo = job?.kind === "video";
   return (
     <div className="rounded-lg bg-background/60 p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -213,6 +286,40 @@ function GenPromptCard({ g }: { g: GenPrompt }) {
         </button>
       </div>
       <p className="text-sm text-foreground/90">{g.prompt}</p>
+
+      <div className="mt-3 space-y-2">
+        {!job && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={genVideo}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}
+            {busy ? "Rendering clip… (~1–2 min)" : "Generate sample clip (Veo)"}
+          </Button>
+        )}
+        {busy && !job && <p className="text-xs text-muted-foreground">Veo is rendering your clip — this usually takes a minute or two. You can keep editing meanwhile.</p>}
+        {err && <p className="text-xs text-destructive">{err}</p>}
+        {job && (
+          <figure className="overflow-hidden rounded-lg border border-border">
+            {isVideo ? (
+              <video src={job.data_url} className="w-full" controls loop autoPlay muted playsInline />
+            ) : (
+              <img src={job.data_url} alt={`Sample b-roll for ${g.label}`} className="w-full" />
+            )}
+            <figcaption className="flex flex-wrap items-center justify-between gap-2 bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Film className="h-3.5 w-3.5 text-primary" />
+                {isVideo ? `Veo sample clip · ${job.provider}` : "Veo unavailable — storyboard preview"}
+              </span>
+              <span className="flex items-center gap-3">
+                <button onClick={genVideo} disabled={busy} className="inline-flex items-center gap-1 text-primary hover:underline disabled:opacity-50">
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shuffle className="h-3.5 w-3.5" />} Regenerate
+                </button>
+                <a href={job.data_url} download={`sample-${g.shot_type || "broll"}.${isVideo ? "mp4" : "svg"}`} className="inline-flex items-center gap-1 text-primary hover:underline">
+                  <Download className="h-3.5 w-3.5" /> Download
+                </a>
+              </span>
+            </figcaption>
+          </figure>
+        )}
+      </div>
     </div>
   );
 }

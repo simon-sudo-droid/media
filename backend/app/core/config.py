@@ -34,11 +34,14 @@ class Settings(BaseSettings):
     CLERK_SECRET_KEY: str = ""
 
     # AI
-    AI_PROVIDER: str = "mock"  # mock | openai | claude
+    AI_PROVIDER: str = "mock"  # mock | openai | claude | gemini
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     ANTHROPIC_MODEL: str = "claude-fable-5"
+    GEMINI_MODEL: str = "gemini-2.0-flash"
+    VEO_MODEL: str = "veo-3.0-generate-preview"  # text-to-video (paid tier)
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
