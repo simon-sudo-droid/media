@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ScanSearch, Loader2, Camera, Clapperboard, Type, Film, Sparkles,
+  ScanSearch, Loader2, Clapperboard, Film, Sparkles,
   Lightbulb, Shuffle, Copy, Check, Download, Wand2, Info, Video, ExternalLink,
+  Clock, MapPin,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -17,15 +18,16 @@ type GenPrompt = {
   label: string; shot_type: string; approach: string;
   prompt: string; resolution: string; duration: string;
 };
+type Sources = { storyblocks?: string[]; pexels?: string[]; image_prompts?: string[] };
 type Scene = {
-  scene: string; broll_ideas: string[]; camera_angles: string[];
-  motion_graphics: string[]; text_overlays: string[];
-  concept_ideas?: string[]; shot_types?: string[]; gen_prompts?: GenPrompt[];
-  stock_queries?: string[];
+  scene: string; timecode?: string; need?: string;
+  broll_ideas?: string[]; concept_ideas?: string[];
+  sources?: Sources; gen_prompts?: GenPrompt[];
 };
 
-const storyblocksUrl = (q: string) =>
-  `https://www.storyblocks.com/video/search/${encodeURIComponent(q.trim().toLowerCase().replace(/\s+/g, "-"))}`;
+const slug = (q: string) => q.trim().toLowerCase().replace(/\s+/g, "-");
+const storyblocksUrl = (q: string) => `https://www.storyblocks.com/video/search/${encodeURIComponent(slug(q))}`;
+const pexelsUrl = (q: string) => `https://www.pexels.com/search/videos/${encodeURIComponent(slug(q))}/`;
 type Resp = { provider: string; scenes: Scene[] };
 
 const SAMPLE = `Most people think editing is about cutting clips together. It's not.
@@ -166,48 +168,60 @@ export default function BrollPage() {
           {data.scenes.map((s, i) => (
             <Card key={i} className="lift">
               <CardContent className="space-y-4 p-6">
-                <div className="flex items-start gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="default" className="shrink-0">Scene {i + 1}</Badge>
-                  <p className="text-sm italic text-muted-foreground">“{s.scene}”</p>
+                  {s.timecode && (
+                    <Badge variant="secondary" className="gap-1 font-mono"><Clock className="h-3 w-3" /> {s.timecode}</Badge>
+                  )}
                 </div>
+                <p className="text-sm italic text-muted-foreground">“{s.scene}”</p>
+
+                {s.need && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                    <span className="text-sm font-medium">{s.need}</span>
+                  </div>
+                )}
+
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <SuggestList icon={Film} title="B-roll ideas" items={s.broll_ideas} />
-                  <SuggestList icon={Camera} title="Camera angles" items={s.camera_angles} />
+                  <SuggestList icon={Film} title="B-roll ideas" items={s.broll_ideas || []} />
                   <SuggestList icon={Lightbulb} title="Conceptual (non-literal) ideas" items={s.concept_ideas || []} />
-                  <SuggestList icon={Shuffle} title="Shot variety" items={s.shot_types || []} />
-                  <SuggestList icon={Clapperboard} title="Motion graphics" items={s.motion_graphics} />
-                  <SuggestList icon={Type} title="Text overlays" items={s.text_overlays} />
+                </div>
+
+                {/* Multi-source generation */}
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+                  <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
+                    <Video className="h-4 w-4 text-emerald-400" /> Generate real b-roll
+                    <Badge variant="success" className="gap-1">4K / 1080p</Badge>
+                  </div>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    Multiple sources — click a chip to open the search, then generate/download. Storyblocks &amp; Pexels open pre-searched; image prompts are for Midjourney/DALL·E.
+                  </p>
+
+                  {(s.sources?.storyblocks?.length ?? 0) > 0 && (
+                    <SourceRow label="Storyblocks" color="emerald" queries={s.sources!.storyblocks!} hrefFn={storyblocksUrl} />
+                  )}
+                  {(s.sources?.pexels?.length ?? 0) > 0 && (
+                    <SourceRow label="Pexels" color="sky" queries={s.sources!.pexels!} hrefFn={pexelsUrl} />
+                  )}
+                  {(s.sources?.image_prompts?.length ?? 0) > 0 && (
+                    <div className="mt-3">
+                      <div className="mb-1.5 text-xs font-semibold text-fuchsia-300">Midjourney / image prompts</div>
+                      <div className="space-y-2">
+                        {s.sources!.image_prompts!.map((p, pi) => <CopyPrompt key={pi} text={p} />)}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {(s.gen_prompts?.length ?? 0) > 0 && (
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
                     <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                      <Wand2 className="h-4 w-4 text-primary" /> B-roll generation briefs
-                      <span className="text-xs font-normal text-muted-foreground">— paste into any AI video tool (Runway, Luma, Veo, Pika…)</span>
+                      <Wand2 className="h-4 w-4 text-primary" /> AI-video generation briefs
+                      <span className="text-xs font-normal text-muted-foreground">— for Runway, Luma, Veo, Pika…</span>
                     </div>
                     <div className="space-y-3">
                       {s.gen_prompts!.map((g, gi) => <GenPromptCard key={gi} g={g} />)}
-                    </div>
-                  </div>
-                )}
-
-                {(s.stock_queries?.length ?? 0) > 0 && (
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-                    <div className="mb-1 flex flex-wrap items-center gap-2 text-sm font-semibold">
-                      <Video className="h-4 w-4 text-emerald-400" /> Generate real b-roll in Storyblocks
-                      <Badge variant="success" className="gap-1">4K / 1080p</Badge>
-                    </div>
-                    <p className="mb-3 text-xs text-muted-foreground">
-                      One click opens Storyblocks with these search/generation terms — render with Storyblocks AI or
-                      pick a clip, then download in 4K or 1080p. (Terms apply the variety + conceptual principles above.)
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {s.stock_queries!.map((q, qi) => (
-                        <a key={qi} href={storyblocksUrl(q)} target="_blank" rel="noopener noreferrer"
-                           className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20">
-                          {q} <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -341,6 +355,42 @@ function SuggestList({ icon: Icon, title, items }: { icon: any; title: string; i
       <ul className="space-y-1.5 text-sm text-foreground/90">
         {items.map((it, i) => <li key={i} className="flex gap-2"><span className="text-primary">•</span> {it}</li>)}
       </ul>
+    </div>
+  );
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20",
+  sky: "border-sky-500/40 bg-sky-500/10 text-sky-300 hover:bg-sky-500/20",
+};
+
+function SourceRow({ label, color, queries, hrefFn }: { label: string; color: string; queries: string[]; hrefFn: (q: string) => string }) {
+  return (
+    <div className="mb-3">
+      <div className="mb-1.5 text-xs font-semibold text-muted-foreground">{label}</div>
+      <div className="flex flex-wrap gap-2">
+        {queries.map((q, i) => (
+          <a key={i} href={hrefFn(q)} target="_blank" rel="noopener noreferrer"
+             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${SOURCE_COLORS[color] || SOURCE_COLORS.emerald}`}>
+            {q} <ExternalLink className="h-3 w-3" />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CopyPrompt({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  }
+  return (
+    <div className="flex items-start gap-2 rounded-lg bg-background/60 p-2.5">
+      <p className="flex-1 text-xs text-foreground/90">{text}</p>
+      <button onClick={copy} className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline">
+        {copied ? <><Check className="h-3.5 w-3.5" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+      </button>
     </div>
   );
 }

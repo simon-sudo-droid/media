@@ -11,6 +11,7 @@ export type User = {
   xp: number;
   level: string;
   streak_days: number;
+  is_admin?: boolean;
 };
 
 type AuthCtx = {

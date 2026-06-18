@@ -74,12 +74,44 @@ _CONCEPT_DEVICES = [
 ]
 
 
+_WORDS_PER_SEC = 2.5  # ~150 wpm narration → estimate timecodes from the script
+
+_EMOTION_WORDS = {"feel", "struggle", "fear", "dream", "love", "pain", "hope",
+                  "fail", "failed", "win", "alone", "proud", "passion", "afraid",
+                  "regret", "believe", "hard", "fight", "overcome"}
+_DATA_WORDS = {"percent", "number", "study", "data", "research", "growth",
+               "money", "revenue", "result", "results", "stats", "statistic"}
+
+
+def _fmt_ts(sec: float) -> str:
+    sec = max(0, int(round(sec)))
+    return f"{sec // 60}:{sec % 60:02d}"
+
+
+def _need_for(scene: str, i: int) -> str:
+    low = scene.lower()
+    if any(w in low for w in _EMOTION_WORDS):
+        return "Need emotional footage — faces, reactions, intimate close-ups."
+    if any(w in low for w in _DATA_WORDS) or "%" in scene or "$" in scene:
+        return "Need supporting B-roll — show the subject literally (the thing being described)."
+    rotation = [
+        "Need contextual B-roll — establish where/what this is about.",
+        "Need conceptual footage — represent the idea, not the literal words.",
+        "Need atmospheric B-roll — mood and environment to cover the cut.",
+    ]
+    return rotation[i % len(rotation)]
+
+
 def _mock_broll(script: str) -> dict:
     scenes = _split_scenes(script)
     out = []
+    elapsed = 0.0
     for i, scene in enumerate(scenes):
         kw = _keywords(scene)
-        # Vary shot types per scene for a dynamic, non-repetitive sequence.
+        n_words = max(1, len(scene.split()))
+        start = elapsed
+        end = elapsed + n_words / _WORDS_PER_SEC
+        elapsed = end
         s1 = _SHOT_CYCLE[i % len(_SHOT_CYCLE)]
         s2 = _SHOT_CYCLE[(i + 2) % len(_SHOT_CYCLE)]
         concept = _CONCEPT_DEVICES[i % len(_CONCEPT_DEVICES)]
@@ -87,71 +119,56 @@ def _mock_broll(script: str) -> dict:
 
         gen_prompts = [
             {
-                "label": f"Literal · {s1[0]}",
-                "shot_type": s1[1],
-                "approach": "literal",
+                "label": f"Literal · {s1[0]}", "shot_type": s1[1], "approach": "literal",
                 "prompt": (
                     f"{s1[0]}, cinematic, of {kw[0]} {('and ' + kw[1]) if len(kw) > 1 else ''} — "
                     f"directly illustrating: \"{scene[:90].strip()}\". Shallow depth of field, "
                     "soft natural lighting, subtle camera movement, 24fps, photoreal, color-graded, high detail."
                 ),
-                "resolution": "3840x2160 (4K)",
-                "duration": "3–5s",
+                "resolution": "3840x2160 (4K)", "duration": "3–5s",
             },
             {
-                "label": f"Conceptual · {s2[0]}",
-                "shot_type": s2[1],
-                "approach": "conceptual",
+                "label": f"Conceptual · {s2[0]}", "shot_type": s2[1], "approach": "conceptual",
                 "prompt": (
                     f"{s2[0]}, cinematic, conceptual visual representing the idea of \"{kw[0]}\" using "
                     f"{concept}. Evocative not literal, moody lighting, gentle motion, shallow focus, "
                     "filmic color grade, 24fps, photoreal, high detail."
                 ),
-                "resolution": "3840x2160 (4K)",
-                "duration": "3–5s",
+                "resolution": "3840x2160 (4K)", "duration": "3–5s",
             },
         ]
 
         out.append(
             {
                 "scene": scene[:160] + ("…" if len(scene) > 160 else ""),
+                "timecode": f"{_fmt_ts(start)}–{_fmt_ts(end)}",
+                "need": _need_for(scene, i),
                 "broll_ideas": [
-                    f"Close-up detail shot illustrating “{kw[0]}”",
-                    f"Wide establishing shot setting the context for {kw[-1]}",
-                    "Hands-in-action insert to keep visual momentum",
-                ],
-                "camera_angles": [
-                    "Eye-level medium for the talking point",
-                    "Low-angle hero shot for emphasis"
-                    if i % 2
-                    else "Over-the-shoulder for perspective",
-                    "Drone / aerial pull-back for scale" if i == 0 else "Slow push-in",
-                ],
-                "motion_graphics": [
-                    f"Kinetic text callout: “{kw[0].title()}”",
-                    "Lower-third with the key statistic",
-                ],
-                "text_overlays": [
-                    f"On-screen keyword: {kw[0].upper()}",
-                    "Animated quote pull for the strongest line",
+                    f"Show “{kw[0]}” directly with a clean, well-lit shot",
+                    f"Cut to a detail/insert that reinforces {kw[-1]}",
+                    "Add a human moment (hands, face, reaction) to keep it alive",
                 ],
                 "concept_ideas": [
                     f"Instead of showing “{kw[0]}” literally, show {concept}.",
                     f"Represent the feeling behind it with {concept2}.",
-                    "Avoid the obvious first idea — pick the visual that conveys the emotion.",
                 ],
-                "shot_types": [
-                    "Mix wide + medium + close-up so the sequence never feels repetitive",
-                    f"This beat → {s1[0]} then cut to {s2[0]}",
-                    "Add a reaction or cutaway to cover edits and keep momentum",
-                ],
+                "sources": {
+                    "storyblocks": [
+                        f"{kw[0]} cinematic" if kw else "cinematic b-roll",
+                        f"{kw[0]} close up" if kw else "close up detail",
+                        f"{kw[-1]} 4k" if len(kw) > 1 else f"{kw[0]} 4k",
+                    ],
+                    "pexels": [
+                        f"{kw[0]} people" if kw else "people working",
+                        f"{kw[0]} lifestyle" if kw else "office lifestyle",
+                        "busy city timelapse" if i % 2 == 0 else "close-up typing keyboard",
+                    ],
+                    "image_prompts": [
+                        f"{kw[0]}, modern environment, cinematic lighting, shallow depth of field, photoreal --ar 16:9",
+                        f"conceptual visual of {kw[0]}, {concept.split('(')[0].strip()}, moody film still --ar 16:9",
+                    ],
+                },
                 "gen_prompts": gen_prompts,
-                "stock_queries": [
-                    f"{kw[0]} cinematic" if kw else "cinematic b-roll",
-                    f"{kw[0]} close up" if kw else "close up detail",
-                    f"{kw[-1]} wide shot" if len(kw) > 1 else f"{kw[0]} wide shot" if kw else "wide establishing shot",
-                    concept.split("(")[0].strip(),
-                ],
             }
         )
     return {"provider": "mock", "scenes": out}
@@ -345,19 +362,274 @@ def _call_llm_json(system: str, user: str) -> dict | None:
 # ─────────────────────────────────────────────────────────────
 def generate_broll(script: str) -> dict:
     result = _call_llm_json(
-        "You are an expert video editor. Given a script, break it into scenes and "
-        "suggest b-roll. Favor VARIETY (mix wide, medium, close-up shots) and "
-        "CONCEPTUAL/non-literal visuals (show the idea/feeling, not the words). "
-        "Return JSON: {scenes:[{scene, broll_ideas[], camera_angles[], "
-        "motion_graphics[], text_overlays[], concept_ideas[], shot_types[], "
-        "stock_queries[] (short search/generation terms for stock libraries), "
-        "gen_prompts:[{label, shot_type, approach, prompt, resolution, duration}]}]}.",
+        "You are an expert video editor planning B-roll. Break the script into beats. "
+        "For EACH beat, estimate a timecode range (assume ~150 wpm narration) and say "
+        "exactly WHAT b-roll is needed there (contextual / supporting / emotional / "
+        "conceptual). Favor CONCEPTUAL/non-literal visuals (show the idea or feeling, "
+        "not the literal words). For each beat give multi-source search/generation "
+        "terms. Return JSON: {scenes:[{scene, timecode (e.g. \"0:10–0:18\"), need, "
+        "broll_ideas[], concept_ideas[], sources:{storyblocks[], pexels[], "
+        "image_prompts[]}, gen_prompts:[{label, shot_type, approach, prompt, "
+        "resolution, duration}]}]}.",
         script,
     )
     if result and "scenes" in result:
         result["provider"] = settings.AI_PROVIDER
         return result
     return _mock_broll(script)
+
+
+# ─────────────────────────────────────────────────────────────
+# Hook Analyser
+# ─────────────────────────────────────────────────────────────
+def _mock_hook(script: str) -> dict:
+    text = script.strip()
+    lines = [l.strip() for l in re.split(r"[\n.!?]+", text) if l.strip()]
+    first = lines[0] if lines else text[:80]
+    words = text.split()
+    has_q = "?" in (first or "")
+    has_number = bool(re.search(r"\d", first or ""))
+    has_you = bool(re.search(r"\byou(r)?\b", first or "", re.I))
+
+    curiosity = _clamp(45 + (25 if has_q else 0) + (15 if has_number else 0))
+    clarity = _clamp(80 - max(0, len(first.split()) - 12) * 4)
+    emotion = _clamp(40 + (20 if has_you else 0) + min(30, sum(text.lower().count(w) for w in ["you", "imagine", "feel", "mistake", "secret", "never"]) * 6))
+    length = _clamp(90 - max(0, len(first.split()) - 10) * 6)
+    overall = round(curiosity * 0.35 + clarity * 0.25 + emotion * 0.25 + length * 0.15)
+
+    # Find the punchiest later line to consider promoting to the top.
+    def punch(l: str) -> int:
+        s = 0
+        if "?" in l: s += 2
+        if re.search(r"\d", l): s += 2
+        s += sum(l.lower().count(w) for w in ["mistake", "secret", "never", "stop", "why", "most"]) * 2
+        return s
+    best_line = ""
+    if len(lines) > 1:
+        cand = max(lines[1:], key=punch)
+        if punch(cand) > punch(first):
+            best_line = cand
+
+    problem = (
+        "The strongest line isn't first — your main promise/hook lands later than the opening seconds."
+        if best_line else
+        "The opening doesn't create a clear curiosity gap in the first seconds."
+    )
+    suggestion = (
+        f"Move this line to the very beginning: \"{best_line}\"" if best_line else
+        "Open with a bold claim, a surprising number, or a question that opens a loop (e.g. \"Most creators waste years making this mistake.\")."
+    )
+    return {
+        "provider": "mock", "overall": overall,
+        "scores": [
+            {"name": "Curiosity", "score": curiosity},
+            {"name": "Clarity", "score": clarity},
+            {"name": "Emotional impact", "score": emotion},
+            {"name": "Length", "score": length},
+        ],
+        "problem": problem, "suggestion": suggestion, "best_line": best_line,
+    }
+
+
+def analyze_hook(script: str) -> dict:
+    result = _call_llm_json(
+        "You are a short-form hook expert. Analyse the opening (hook) of this script. "
+        "Score 0-100 on Curiosity, Clarity, Emotional impact, and Length, plus an "
+        "overall Hook Score. Identify the single biggest PROBLEM and a concrete "
+        "SUGGESTION (if a stronger line appears later, recommend moving it to the very "
+        "start and return it as best_line). Return JSON: {overall, scores:[{name, "
+        "score}], problem, suggestion, best_line}.",
+        script,
+    )
+    if result and "scores" in result and "overall" in result:
+        result["provider"] = settings.AI_PROVIDER
+        result.setdefault("best_line", "")
+        return result
+    return _mock_hook(script)
+
+
+# ─────────────────────────────────────────────────────────────
+# Senior Editor review
+# ─────────────────────────────────────────────────────────────
+def _parse_premiere_xml(xml: str) -> dict:
+    """Pull rough editing metrics from a Premiere/FCP7 XML export."""
+    clips = len(re.findall(r"<clipitem\b", xml, re.I))
+    # Unique source media (by pathurl or file name).
+    srcs = re.findall(r"<pathurl>(.*?)</pathurl>", xml, re.I) or re.findall(r"<name>(.*?)</name>", xml, re.I)
+    unique = len({s.strip().lower() for s in srcs}) if srcs else 0
+    return {"clips": clips, "unique_sources": unique}
+
+
+def _senior_heuristic(script: str, transcript: str, xml: str) -> dict:
+    words = len((transcript or script).split())
+    est_sec = max(30, words / _WORDS_PER_SEC)  # rough runtime
+    meta = _parse_premiere_xml(xml) if xml.strip() else {"clips": 0, "unique_sources": 0}
+    clips, unique = meta["clips"], meta["unique_sources"]
+
+    issues: list[str] = []
+    recs: list[str] = []
+
+    # Pacing — from average shot length when we have clip data, else from runtime.
+    if clips:
+        avg_shot = est_sec / max(1, clips)
+        pacing = _clamp(int(95 - max(0, avg_shot - 3) * 9))
+        if avg_shot > 6:
+            mid = _fmt_ts(est_sec * 0.35)
+            issues.append(f"Slow pacing — average shot is ~{avg_shot:.1f}s. Long holds around {mid} risk drop-off.")
+            recs.append("Tighten cuts and trim dead air; aim for shorter average shot length.")
+    else:
+        pacing = _clamp(int(80 - max(0, est_sec - 90) / 12))
+
+    # Visual variety — unique sources vs total clips.
+    if clips:
+        ratio = unique / clips
+        visual_variety = _clamp(int(ratio * 110))
+        if ratio < 0.5:
+            issues.append(f"Same footage reused — only {unique} unique sources across {clips} clips.")
+            recs.append("Introduce fresh B-roll sources; avoid repeating the same office/stock shots.")
+    else:
+        visual_variety = 65
+        recs.append("Upload the Premiere XML for precise pacing & visual-variety analysis.")
+
+    # B-roll quality — talking density (transcript words vs clips).
+    if clips:
+        broll_quality = _clamp(int(40 + min(50, clips / max(1, est_sec / 60) * 6)))
+    else:
+        broll_quality = 60
+    if broll_quality < 70:
+        t = _fmt_ts(est_sec * 0.25)
+        issues.append(f"Too much talking head (e.g. around {t}–{_fmt_ts(est_sec * 0.32)}) without covering B-roll.")
+        recs.append("Add emotional/contextual B-roll over talking-head stretches.")
+
+    # Subtitles — heuristic: present if transcript supplied.
+    subtitle_quality = 82 if transcript.strip() else 60
+    if not transcript.strip():
+        recs.append("Add burned-in captions (most viewers watch sound-off).")
+
+    # Retention — composite + ending check.
+    retention = _clamp(round(pacing * 0.35 + visual_variety * 0.25 + broll_quality * 0.25 + subtitle_quality * 0.15))
+    issues.append("Ending feels weak — it trails off rather than landing a clear final beat.")
+    recs.append(f"Add a pattern interrupt around {_fmt_ts(est_sec * 0.5)} (zoom, sound effect, or B-roll) to reset attention.")
+    recs.append("End on a strong line or visual + a clear call-to-action.")
+
+    overall = _clamp(round(pacing * 0.25 + visual_variety * 0.2 + broll_quality * 0.2 + subtitle_quality * 0.15 + retention * 0.2))
+    return {
+        "provider": "mock", "source": "heuristic", "overall": overall,
+        "scores": [
+            {"name": "Pacing", "score": pacing},
+            {"name": "B-roll quality", "score": broll_quality},
+            {"name": "Subtitle quality", "score": subtitle_quality},
+            {"name": "Visual variety", "score": visual_variety},
+            {"name": "Retention potential", "score": retention},
+        ],
+        "issues": issues[:6],
+        "recommendations": recs[:6],
+    }
+
+
+def senior_review(script: str, transcript: str, premiere_xml: str,
+                  video_base64: str | None = None) -> dict:
+    # Real video understanding via Gemini, when the key has quota.
+    if video_base64 and settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
+        live = _gemini_video_review(script, transcript, video_base64)
+        if live and "scores" in live:
+            live["provider"] = "gemini"
+            live["source"] = "gemini"
+            return live
+    return _senior_heuristic(script, transcript, premiere_xml)
+
+
+# ─────────────────────────────────────────────────────────────
+# Creative Intelligence — daily AI/editing trend digest
+# ─────────────────────────────────────────────────────────────
+_intel_cache: dict = {"date": None, "data": None}
+
+
+def creative_intel_digest() -> dict:
+    """Daily digest of AI/editing trends. Uses Gemini + Google Search grounding
+    when the key has quota; otherwise returns an 'unavailable' status (the
+    admin page still shows the curated source hub)."""
+    from datetime import datetime, timezone
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    if _intel_cache["date"] == today and _intel_cache["data"]:
+        return _intel_cache["data"]
+
+    items = _gemini_intel() if (settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY) else None
+    data = {
+        "status": "live" if items else "unavailable",
+        "updated": today,
+        "items": items or [],
+    }
+    if items:
+        _intel_cache.update(date=today, data=data)
+    return data
+
+
+def _gemini_intel() -> list | None:
+    """Ask Gemini (grounded with Google Search) for the last ~3 days of trends."""
+    try:
+        import httpx
+
+        prompt = (
+            "Search the web for the most important developments from the LAST 3 DAYS in: "
+            "AI tools/models (OpenAI, Gemini, Claude, Runway, ElevenLabs, Midjourney), "
+            "video editing trends, what top creators (Alex Hormozi, Patrick Bet-David, "
+            "Ali Abdaal) are doing, and social-media editing trends. Ignore anything older "
+            "than 3 days or unverified. Return ONLY a JSON array of up to 10 items: "
+            "[{title, summary, category (AI Tools|Editing Trends|Social Trends|Creator Trends|New AI Tools), source}]."
+        )
+        resp = httpx.post(
+            f"{_GENAI_BASE}/models/{settings.GEMINI_MODEL}:generateContent",
+            params={"key": settings.GEMINI_API_KEY},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "tools": [{"google_search": {}}],
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\[.*\]", text, re.S)
+        return json.loads(match.group(0)) if match else None
+    except Exception:
+        return None
+
+
+def _gemini_video_review(script: str, transcript: str, video_base64: str) -> dict | None:
+    """Best-effort: send the video inline to Gemini for a real review."""
+    try:
+        import httpx
+
+        data = video_base64.strip()
+        if data.startswith("data:"):
+            _, _, data = data.partition(",")
+        system = (
+            "You are a senior video editor. Review this finished video. Score 0-100: "
+            "Pacing, B-roll quality, Subtitle quality, Visual variety, Retention "
+            "potential, plus overall. List concrete issues (with timecodes) and "
+            "recommendations. Return ONLY JSON: {overall, scores:[{name,score}], "
+            "issues[], recommendations[]}."
+        )
+        ctx = f"Script:\n{script[:4000]}\n\nTranscript:\n{transcript[:4000]}"
+        resp = httpx.post(
+            f"{_GENAI_BASE}/models/{settings.GEMINI_MODEL}:generateContent",
+            params={"key": settings.GEMINI_API_KEY},
+            json={
+                "contents": [{"parts": [
+                    {"text": system + "\n\n" + ctx},
+                    {"inline_data": {"mime_type": "video/mp4", "data": data}},
+                ]}],
+                "generationConfig": {"response_mime_type": "application/json"},
+            },
+            timeout=120,
+        )
+        resp.raise_for_status()
+        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        match = re.search(r"\{.*\}", text, re.S)
+        return json.loads(match.group(0)) if match else None
+    except Exception:
+        return None
 
 
 def _storyboard_frame(prompt: str, label: str = "") -> str:

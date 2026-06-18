@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     AUTH_PROVIDER: str = "local"  # local | clerk
     CLERK_SECRET_KEY: str = ""
 
+    # The single admin account (gets the Admin panel + Creative Intelligence).
+    ADMIN_EMAIL: str = "simongodlisten10@gmail.com"
+
     # AI
     AI_PROVIDER: str = "mock"  # mock | openai | claude | gemini
     OPENAI_API_KEY: str = ""

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.api.routes import ai, auth, challenges, checklists, content, dashboard, quizzes
+from app.api.routes import admin, ai, auth, challenges, checklists, content, dashboard, quizzes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("editmentor")
@@ -53,3 +53,4 @@ app.include_router(challenges.router)
 app.include_router(checklists.router)
 app.include_router(ai.router)
 app.include_router(dashboard.router)
+app.include_router(admin.router)

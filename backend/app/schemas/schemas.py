@@ -29,6 +29,7 @@ class UserOut(BaseModel):
     xp: int
     level: str
     streak_days: int
+    is_admin: bool = False
 
 
 # ── Content ──────────────────────────────────────────────────
@@ -199,21 +200,69 @@ class BrollGenPrompt(BaseModel):
     duration: str       # e.g. "3–5s"
 
 
+class BrollSources(BaseModel):
+    storyblocks: list[str] = []
+    pexels: list[str] = []
+    image_prompts: list[str] = []      # Midjourney / image-gen prompts
+
+
 class BrollScene(BaseModel):
     scene: str
-    broll_ideas: list[str]
-    camera_angles: list[str]
-    motion_graphics: list[str]
-    text_overlays: list[str]
+    timecode: str = ""                 # estimated placement, e.g. "0:10–0:18"
+    need: str = ""                     # what kind of b-roll is needed here
+    broll_ideas: list[str] = []
     concept_ideas: list[str] = []      # conceptual / non-literal visual options
-    shot_types: list[str] = []         # recommended shot-type mix for variety
+    sources: BrollSources = Field(default_factory=BrollSources)
     gen_prompts: list[BrollGenPrompt] = []  # ready-to-render AI-video briefs
-    stock_queries: list[str] = []      # search/generation terms for Storyblocks etc.
+    # Deprecated/removed from the UI (kept optional for backward compatibility):
+    camera_angles: list[str] = []
+    motion_graphics: list[str] = []
+    text_overlays: list[str] = []
+    shot_types: list[str] = []
+    stock_queries: list[str] = []
 
 
 class BrollResponse(BaseModel):
     provider: str
     scenes: list[BrollScene]
+
+
+# ── Hook Analyser ───────────────────────────────────────────
+class HookScore(BaseModel):
+    name: str       # Curiosity | Clarity | Emotional impact | Length
+    score: int      # 0-100
+
+
+class HookResponse(BaseModel):
+    provider: str
+    overall: int                       # Hook Score /100
+    scores: list[HookScore]
+    problem: str
+    suggestion: str
+    best_line: str = ""                # the line worth moving to the top
+
+
+# ── Senior Editor review ────────────────────────────────────
+class SeniorReviewRequest(BaseModel):
+    script: str = Field(default="", max_length=40000)
+    transcript: str = Field(default="", max_length=80000)
+    premiere_xml: str = Field(default="", max_length=4_000_000)
+    video_base64: str | None = Field(default=None, max_length=30_000_000)
+    video_name: str | None = Field(default=None, max_length=300)
+
+
+class ReviewScore(BaseModel):
+    name: str       # Pacing | B-roll quality | Subtitle quality | Visual variety | Retention potential
+    score: int
+
+
+class SeniorReviewResponse(BaseModel):
+    provider: str
+    source: str = "heuristic"          # heuristic | gemini
+    overall: int
+    scores: list[ReviewScore]
+    issues: list[str]
+    recommendations: list[str]
 
 
 class BrollVideoRequest(BaseModel):

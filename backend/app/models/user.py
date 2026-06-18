@@ -31,6 +31,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     @property
+    def is_admin(self) -> bool:
+        from app.core.config import settings
+        return self.email.lower() == settings.ADMIN_EMAIL.lower()
+
+    @property
     def level(self) -> str:
         """Skill level derived from XP."""
         if self.xp >= 5000:

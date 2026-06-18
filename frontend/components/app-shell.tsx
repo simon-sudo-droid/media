@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, ListChecks, Flame,
   ScanSearch, BookOpenCheck, Image as ImageIcon, Trophy, LogOut, Menu, X, Flame as FlameIcon,
-  ListTodo, BadgeCheck, Wrench,
+  ListTodo, BadgeCheck, Wrench, Anchor, Award, Shield,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,8 @@ const NAV = [
 
 const TOOLS = [
   { href: "/tools/broll", label: "Script → B-roll", icon: ScanSearch },
+  { href: "/tools/hook", label: "Hook Analyser", icon: Anchor },
+  { href: "/tools/senior-editor", label: "Senior Editor", icon: Award },
   { href: "/tools/storytelling", label: "Storytelling Coach", icon: BookOpenCheck },
   { href: "/tools/slides", label: "Slide Analyzer", icon: ImageIcon },
 ];
@@ -76,6 +78,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {TOOLS.map((item) => (
           <NavLink key={item.href} {...item} active={pathname === item.href} />
         ))}
+        {user.is_admin && (
+          <>
+            <div className="px-3 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Admin
+            </div>
+            <NavLink href="/admin" label="Admin" icon={Shield} active={pathname === "/admin"} />
+          </>
+        )}
       </nav>
 
       <div className="border-t border-border p-3">

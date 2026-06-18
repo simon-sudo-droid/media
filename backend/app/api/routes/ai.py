@@ -8,7 +8,10 @@ from app.schemas.schemas import (
     BrollResponse,
     BrollVideoJob,
     BrollVideoRequest,
+    HookResponse,
     ScriptRequest,
+    SeniorReviewRequest,
+    SeniorReviewResponse,
     SlideAnalysisRequest,
     SlideAnalysisResponse,
     StorytellingResponse,
@@ -56,6 +59,30 @@ def broll_video_status(
     user: User = Depends(get_current_user),
 ):
     return ai_service.poll_broll_video(job_id)
+
+
+@router.post("/hook", response_model=HookResponse)
+def hook_analyser(
+    body: ScriptRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = ai_service.analyze_hook(body.script)
+    _log_use(db, user, "Used Hook Analyser")
+    return result
+
+
+@router.post("/senior-review", response_model=SeniorReviewResponse)
+def senior_review(
+    body: SeniorReviewRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not (body.script.strip() or body.transcript.strip() or body.premiere_xml.strip() or body.video_base64):
+        raise HTTPException(422, "Provide at least a script, transcript, Premiere XML, or video.")
+    result = ai_service.senior_review(body.script, body.transcript, body.premiere_xml, body.video_base64)
+    _log_use(db, user, "Used Senior Editor review")
+    return result
 
 
 @router.post("/storytelling", response_model=StorytellingResponse)
