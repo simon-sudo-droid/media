@@ -555,10 +555,24 @@ def creative_intel_digest() -> dict:
     if _intel_cache["date"] == today and _intel_cache["data"]:
         return _intel_cache["data"]
 
-    items = _gemini_intel() if (settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY) else None
+    # Prefer Gemini (search-grounded) when the key has quota; otherwise fall back
+    # to free public RSS feeds — both produce a genuinely live daily feed.
+    items, source = None, "rss"
+    if settings.AI_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
+        items = _gemini_intel()
+        if items:
+            source = "gemini"
+    if not items:
+        try:
+            from app.services.intel import fetch_free_digest
+            items = fetch_free_digest()
+        except Exception:
+            items = None
+
     data = {
         "status": "live" if items else "unavailable",
         "updated": today,
+        "source": source,
         "items": items or [],
     }
     if items:

@@ -16,7 +16,8 @@ type Resp = {
   scores: Score[]; issues: string[]; recommendations: string[];
 };
 
-const MAX_VIDEO = 25 * 1024 * 1024; // 25 MB inline limit
+const MAX_VIDEO = 500 * 1024 * 1024;   // allow up to 500 MB uploads
+const INLINE_AI_LIMIT = 20 * 1024 * 1024; // only files ≤20MB are sent inline for AI vision (Gemini inline cap)
 
 function tone(score: number) {
   if (score >= 80) return "text-emerald-400";
@@ -32,6 +33,7 @@ export default function SeniorEditorPage() {
   const [xmlName, setXmlName] = useState("");
   const [video, setVideo] = useState<string | null>(null);
   const [videoName, setVideoName] = useState("");
+  const [largeVideo, setLargeVideo] = useState(false);
   const [data, setData] = useState<Resp | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -48,11 +50,18 @@ export default function SeniorEditorPage() {
   function onVideo(file?: File) {
     setError("");
     if (!file) return;
-    if (file.size > MAX_VIDEO) { setError("Video too large for inline analysis (max 25 MB). Script/transcript/XML still work."); return; }
+    if (file.size > MAX_VIDEO) { setError("Video too large (max 500 MB)."); return; }
     setVideoName(file.name);
-    const r = new FileReader();
-    r.onload = () => setVideo(r.result as string);
-    r.readAsDataURL(file);
+    if (file.size <= INLINE_AI_LIMIT) {
+      setLargeVideo(false);
+      const r = new FileReader();
+      r.onload = () => setVideo(r.result as string);
+      r.readAsDataURL(file);
+    } else {
+      // Too big to send inline for AI vision — analyze via metadata + script/transcript/XML.
+      setVideo(null);
+      setLargeVideo(true);
+    }
   }
 
   async function run() {
@@ -96,14 +105,20 @@ export default function SeniorEditorPage() {
             </button>
             <input ref={vidRef} type="file" accept="video/*" className="hidden" onChange={(e) => onVideo(e.target.files?.[0])} />
             <button onClick={() => vidRef.current?.click()} className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-secondary/20 px-3 py-3 text-sm text-muted-foreground hover:border-primary/50">
-              <Film className="h-4 w-4" /> {videoName || "Upload finished video"}
-              {video && <X className="ml-auto h-4 w-4" onClick={(e) => { e.stopPropagation(); setVideo(null); setVideoName(""); }} />}
+              <Film className="h-4 w-4" /> {videoName || "Upload finished video (up to 500 MB)"}
+              {(video || largeVideo) && <X className="ml-auto h-4 w-4" onClick={(e) => { e.stopPropagation(); setVideo(null); setVideoName(""); setLargeVideo(false); }} />}
             </button>
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
+          {largeVideo && (
+            <p className="text-xs text-amber-400">
+              Large file ({videoName}) accepted — for files over 20 MB the AI can&rsquo;t watch it inline, so it&rsquo;s
+              scored from your script/transcript/Premiere XML. (Full large-video AI analysis needs the Gemini Files API.)
+            </p>
+          )}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Premiere XML gives real pacing/variety analysis. Video is analyzed by AI when a vision key is active.</span>
+            <span className="text-xs text-muted-foreground">Premiere XML gives real pacing/variety analysis. Videos ≤20 MB are watched by AI when a vision key is active.</span>
             <Button variant="gradient" disabled={!canRun} onClick={run}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Review
             </Button>

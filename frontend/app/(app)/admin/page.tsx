@@ -13,8 +13,9 @@ type AdminUser = {
   logins: number; actions: number; last_active: string | null;
 };
 type Act = { email: string; full_name: string; kind: string; description: string; xp: number; created_at: string };
+type DigestItem = { title: string; summary: string; category: string; source?: string; url?: string; date?: string };
 type Intel = {
-  digest: { status: string; updated: string; items: { title: string; summary: string; category: string; source?: string }[] };
+  digest: { status: string; updated: string; source?: string; items: DigestItem[] };
   sections: Record<string, string[]>;
   sources: Record<string, Record<string, string[]>>;
 };
@@ -149,18 +150,27 @@ export default function AdminPage() {
                 <div className="space-y-3">
                   {intel.digest.items.map((it, i) => (
                     <div key={i} className="rounded-lg bg-secondary/40 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{it.title}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        {it.url ? (
+                          <a href={it.url} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline">{it.title}</a>
+                        ) : (
+                          <span className="text-sm font-medium">{it.title}</span>
+                        )}
                         <Badge variant="secondary" className="shrink-0 text-[10px]">{it.category}</Badge>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{it.summary}</p>
+                      {it.summary && <p className="mt-1 text-sm text-muted-foreground">{it.summary}</p>}
+                      <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground/70">
+                        {it.source && <span>{it.source}</span>}
+                        {it.date && <span>· {it.date}</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Live daily updates activate automatically once the Gemini key has quota (Google-Search-grounded,
-                  refreshed daily, filtered to the last 3 days). Until then, use the curated sources below.
+                  Live feed is on (free public sources — Reddit, TechCrunch, The Verge — refreshed daily, last 3 days).
+                  If nothing shows, the sources were briefly unreachable; hit Refresh. It auto-upgrades to Gemini +
+                  Google Search once your key has quota.
                 </p>
               )}
             </CardContent>
