@@ -1,0 +1,24 @@
+name: Keep Render services warm
+
+# Free keep-alive: pings the Render services so they don't spin down (which
+# causes the ~50s "service waking up" screen on Render's free tier).
+# Runs on GitHub's infrastructure — no cost on public repos; uses a small
+# amount of Actions minutes on private repos.
+on:
+  schedule:
+    # Every 10 minutes (GitHub may delay low-priority schedules a few minutes).
+    # NOTE: keeping free services awake 24/7 can use a lot of Render's monthly
+    # free instance hours. If you hit a limit, narrow the window, e.g.:
+    #   - cron: "*/10 6-23 * * *"   # ~daytime only (UTC)
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping web + API
+        run: |
+          echo "Pinging at $(date -u)"
+          curl -sS -m 90 -o /dev/null -w "web  -> %{http_code}\n" https://editmentor-web.onrender.com/ || true
+          curl -sS -m 90 -o /dev/null -w "api  -> %{http_code}\n" https://editmentor-api.onrender.com/health || true
