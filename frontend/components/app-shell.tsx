@@ -24,7 +24,6 @@ const NAV = [
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
   { href: "/challenges", label: "Challenges", icon: Flame },
   { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 
 const TOOLS = [
@@ -84,6 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Admin
             </div>
             <NavLink href="/admin" label="Admin" icon={Shield} active={pathname === "/admin"} />
+            <NavLink href="/leaderboard" label="Leaderboard" icon={Trophy} active={pathname === "/leaderboard"} />
           </>
         )}
       </nav>

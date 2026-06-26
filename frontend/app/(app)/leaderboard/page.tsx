@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trophy, Crown } from "lucide-react";
+import { Trophy, Crown, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +10,23 @@ import { Badge } from "@/components/ui/badge";
 type Entry = { rank: number; full_name: string; xp: number; level: string };
 
 export default function LeaderboardPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [entries, setEntries] = useState<Entry[]>([]);
 
   useEffect(() => {
-    api<Entry[]>("/leaderboard").then(setEntries).catch(() => {});
-  }, []);
+    if (user?.is_admin) api<Entry[]>("/leaderboard").then(setEntries).catch(() => {});
+  }, [user]);
+
+  if (loading) return null;
+  if (!user?.is_admin) {
+    return (
+      <div className="mx-auto max-w-md py-20 text-center">
+        <Lock className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+        <h1 className="text-xl font-bold">Admin only</h1>
+        <p className="text-muted-foreground">The leaderboard is restricted to the administrator account.</p>
+      </div>
+    );
+  }
 
   const medal = ["text-amber-400", "text-zinc-300", "text-orange-400"];
 

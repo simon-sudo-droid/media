@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
@@ -87,6 +87,8 @@ def dashboard(db: Session = Depends(get_db), user: User = Depends(get_current_us
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
 def leaderboard(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
     top = db.scalars(select(User).order_by(User.xp.desc()).limit(20)).all()
     return [
         LeaderboardEntry(
