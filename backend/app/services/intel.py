@@ -9,7 +9,10 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from xml.etree import ElementTree as ET
+
+# defusedxml guards against entity-expansion ("billion laughs") / XXE attacks
+# from untrusted feed content.
+import defusedxml.ElementTree as ET
 
 # (feed url, category, friendly source name)
 # Reliable, key-less feeds first; Reddit kept as best-effort (often 429s from

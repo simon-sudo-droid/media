@@ -9,6 +9,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # Safety switch. Defaults to False (production-safe): reset links are never
+    # returned in API responses and a weak JWT secret aborts startup. Set
+    # DEBUG=true only for local development.
+    DEBUG: bool = False
+
     # Database
     DATABASE_URL: str = (
         "postgresql+psycopg://editmentor:editmentor@db:5432/editmentor"

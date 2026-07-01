@@ -30,7 +30,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false                   # set in the Render dashboard (do not commit secrets)
       - key: CORS_ORIGINS
-        value: "*"                    # Bearer-token auth, so wildcard is safe here
+        value: https://editmentor-web.onrender.com   # pinned to the frontend origin
       - key: FRONTEND_URL
         value: https://editmentor-web.onrender.com   # used to build password-reset links
 

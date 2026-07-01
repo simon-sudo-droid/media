@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.ratelimit import limiter
 from app.core.security import (
     create_access_token,
     create_reset_token,
@@ -28,7 +29,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=201)
-def signup(body: SignupRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/hour")
+def signup(request: Request, body: SignupRequest, db: Session = Depends(get_db)):
     existing = db.scalar(select(User).where(User.email == body.email.lower()))
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -44,7 +46,8 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.lower()))
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(
@@ -56,23 +59,27 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
-def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/hour")
+def forgot_password(request: Request, body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == body.email.lower()))
-    generic = "If an account exists for that email, a password reset link has been created."
-    # Always return the same message to avoid revealing which emails are registered.
+    # Always return the same message so callers can't tell which emails exist.
+    generic = "If an account exists for that email, a password reset link has been sent."
     if not user:
         return ForgotPasswordResponse(message=generic, reset_link=None)
 
     token = create_reset_token(str(user.id))
     link = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
-    sent = mailer.send_email(
+    mailer.send_email(
         user.email,
         "Reset your EditMentor AI password",
         f"Hi {user.full_name or ''},\n\nReset your password with this link "
         f"(valid for 30 minutes):\n{link}\n\nIf you didn't request this, ignore this email.",
     )
-    # Demo mode (no SMTP configured): return the link so the flow is testable.
-    return ForgotPasswordResponse(message=generic, reset_link=None if sent else link)
+    # SECURITY: never return the reset link/token to the caller in production —
+    # doing so would let anyone reset any account. Only surfaced in local DEBUG.
+    return ForgotPasswordResponse(
+        message=generic, reset_link=link if settings.DEBUG else None
+    )
 
 
 @router.post("/reset-password", response_model=TokenResponse)
