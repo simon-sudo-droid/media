@@ -31,6 +31,8 @@ services:
         sync: false                   # set in the Render dashboard (do not commit secrets)
       - key: CORS_ORIGINS
         value: "*"                    # Bearer-token auth, so wildcard is safe here
+      - key: FRONTEND_URL
+        value: https://editmentor-web.onrender.com   # used to build password-reset links
 
   # ── Frontend (Next.js) ─────────────────────────────────────
   - type: web

@@ -15,6 +15,21 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=6, max_length=128)
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    # Populated only in demo mode (no SMTP configured) so the flow is testable.
+    reset_link: str | None = None
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

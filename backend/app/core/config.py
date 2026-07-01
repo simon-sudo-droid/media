@@ -49,6 +49,17 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # Public URL of the frontend (used to build password-reset links).
+    FRONTEND_URL: str = "http://localhost:3000"
+
+    # Optional SMTP email (for real reset emails). When unset, the app runs in
+    # "demo mode" and returns the reset link in the API response instead.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

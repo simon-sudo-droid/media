@@ -31,6 +31,28 @@ def decode_access_token(token: str) -> str | None:
         payload = jwt.decode(
             token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
         )
+        if payload.get("purpose") == "reset":
+            return None  # reset tokens are not valid access tokens
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
+def create_reset_token(user_id: str, minutes: int = 30) -> str:
+    """Short-lived, single-purpose token for password reset links."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    payload = {"sub": user_id, "exp": expire, "purpose": "reset"}
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_reset_token(token: str) -> str | None:
+    """Return the user id if it's a valid, unexpired reset token, else None."""
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("purpose") != "reset":
+            return None
         return payload.get("sub")
     except JWTError:
         return None
