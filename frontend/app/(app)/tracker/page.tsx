@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BarChart3, Plus, Loader2, Save, Pencil, Link as LinkIcon, Users, Film, ListChecks } from "lucide-react";
+import { BarChart3, Plus, Loader2, Save, Pencil, Trash2, Link as LinkIcon, Users, Film, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,6 +96,11 @@ export default function TrackerPage() {
       await api(`/tracker/${id}`, { method: "PATCH", body: editForm });
       setEditId(null); reload();
     } finally { setSaving(false); }
+  }
+  async function removeEntry(id: number) {
+    if (!window.confirm("Delete this entry? This cannot be undone.")) return;
+    await api(`/tracker/${id}`, { method: "DELETE" });
+    reload();
   }
 
   return (
@@ -195,7 +200,10 @@ export default function TrackerPage() {
                     </div>
                   </div>
                   {user?.is_admin && (
-                    <Button variant="ghost" size="sm" onClick={() => startEdit(e)} className="shrink-0 gap-1"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => startEdit(e)} className="gap-1"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+                      <Button variant="ghost" size="sm" onClick={() => removeEntry(e.id)} className="gap-1 text-red-400 hover:text-red-300"><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                    </div>
                   )}
                 </div>
               )}

@@ -151,3 +151,18 @@ def update_entry(
     out = TrackerEntryOut.model_validate(entry)
     out.editor_name = _name(db.get(User, entry.user_id))
     return out
+
+
+@router.delete("/{entry_id}", status_code=204)
+def delete_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    # Only an admin can delete entries (same policy as editing).
+    if not user.is_admin:
+        raise HTTPException(403, "Only an admin can delete entries.")
+    entry = db.get(TrackerEntry, entry_id)
+    if entry:
+        db.delete(entry)
+        db.commit()
