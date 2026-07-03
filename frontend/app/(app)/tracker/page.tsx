@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BarChart3, Plus, Loader2, Save, Pencil, Link as LinkIcon, Users, Film, ListChecks } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -65,6 +65,11 @@ export default function TrackerPage() {
 
   useEffect(() => { api<Editor[]>("/tracker/editors").then(setEditors).catch(() => {}); }, []);
   useEffect(reload, [reload]);
+  // Live: refresh entries + chart periodically so team output updates in real time.
+  useEffect(() => {
+    const id = setInterval(reload, 20000);
+    return () => clearInterval(id);
+  }, [reload]);
 
   async function save() {
     if (!form.entry_date) return;
@@ -92,9 +97,6 @@ export default function TrackerPage() {
       setEditId(null); reload();
     } finally { setSaving(false); }
   }
-
-  const maxEditor = useMemo(() => Math.max(1, ...(stats?.by_editor.map((x) => x.clips) || [1])), [stats]);
-  const maxPeriod = useMemo(() => Math.max(1, ...(stats?.by_period.map((x) => x.clips) || [1])), [stats]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -209,52 +211,83 @@ export default function TrackerPage() {
           <div className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Data Analytics</h2>
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> Live
+            </span>
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            {/* Per-editor breakdown */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 text-sm font-semibold">Clips by editor</div>
-                <div className="space-y-2">
-                  {stats.by_editor.map((b) => (
-                    <div key={b.editor_name}>
-                      <div className="mb-0.5 flex justify-between text-xs"><span>{b.editor_name}</span><span className="text-muted-foreground">{b.clips}</span></div>
-                      <div className="h-3 w-full overflow-hidden rounded-full bg-secondary">
-                        <div className="h-full rounded-full bg-gradient-to-r from-primary to-fuchsia-500" style={{ width: `${(b.clips / maxEditor) * 100}%` }} />
-                      </div>
-                    </div>
+            <Card><CardContent className="p-5">
+              <div className="mb-4 text-sm font-semibold">Clips by editor</div>
+              <BarChart data={stats.by_editor.map((b) => ({ label: b.editor_name, value: b.clips }))} yLabel="Clips submitted" xLabel="Editor" />
+            </CardContent></Card>
+            <Card><CardContent className="p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm font-semibold">Clips over time</div>
+                <div className="flex gap-1">
+                  {(["month", "day"] as const).map((g) => (
+                    <button key={g} onClick={() => setGroupBy(g)} className={`rounded-md px-2 py-1 text-xs ${groupBy === g ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>{g === "month" ? "By month" : "By day"}</button>
                   ))}
-                  {stats.by_editor.length === 0 && <p className="text-sm text-muted-foreground">No clips yet.</p>}
                 </div>
-              </CardContent>
-            </Card>
-            {/* Clips over time */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="text-sm font-semibold">Clips over time</div>
-                  <div className="flex gap-1">
-                    {(["month", "day"] as const).map((g) => (
-                      <button key={g} onClick={() => setGroupBy(g)} className={`rounded-md px-2 py-1 text-xs ${groupBy === g ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>{g === "month" ? "By month" : "By day"}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex h-40 items-end gap-2">
-                  {stats.by_period.map((p) => (
-                    <div key={p.period} className="flex flex-1 flex-col items-center gap-1">
-                      <div className="flex w-full flex-1 items-end">
-                        <div className="w-full rounded-t bg-gradient-to-t from-primary to-fuchsia-500" style={{ height: `${(p.clips / maxPeriod) * 100}%` }} title={`${p.clips} clips`} />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{p.period.slice(5)}</span>
-                    </div>
-                  ))}
-                  {stats.by_period.length === 0 && <p className="text-sm text-muted-foreground">No data yet.</p>}
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <BarChart data={stats.by_period.map((p) => ({ label: p.period.slice(5), value: p.clips }))} yLabel="Clips" xLabel={groupBy === "month" ? "Month" : "Day"} />
+            </CardContent></Card>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const CHART_PALETTE = ["#a855f7", "#ec4899", "#ef4444", "#0ea5e9", "#22c55e", "#f59e0b", "#14b8a6", "#8b5cf6"];
+
+function BarChart({ data, yLabel, xLabel }: { data: { label: string; value: number }[]; yLabel: string; xLabel: string }) {
+  const H = 200;
+  if (data.length === 0) return <p className="py-10 text-center text-sm text-muted-foreground">No data yet — add tracker entries to populate this chart.</p>;
+  const rawMax = Math.max(1, ...data.map((d) => d.value));
+  const step = rawMax <= 5 ? 1 : rawMax <= 10 ? 2 : rawMax <= 20 ? 4 : Math.ceil(rawMax / 5 / 5) * 5;
+  const niceMax = Math.max(step, Math.ceil(rawMax / step) * step);
+  const ticks: number[] = [];
+  for (let v = 0; v <= niceMax; v += step) ticks.push(v);
+
+  return (
+    <div className="flex gap-2">
+      <div className="grid place-items-center">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground [writing-mode:vertical-rl] rotate-180">{yLabel}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex">
+          {/* y-axis ticks */}
+          <div className="relative mr-2 w-6" style={{ height: H }}>
+            {ticks.map((v) => (
+              <span key={v} className="absolute right-0 -translate-y-1/2 text-[10px] text-muted-foreground" style={{ bottom: `${(v / niceMax) * H}px` }}>{v}</span>
+            ))}
+          </div>
+          {/* plot */}
+          <div className="relative flex-1" style={{ height: H }}>
+            {ticks.map((v) => (
+              <div key={v} className="absolute inset-x-0 border-t border-border/50" style={{ bottom: `${(v / niceMax) * H}px` }} />
+            ))}
+            <div className="absolute inset-0 flex items-end gap-2 px-1">
+              {data.map((d, i) => (
+                <div key={d.label} className="flex flex-1 flex-col items-center justify-end">
+                  <span className="mb-0.5 text-[10px] font-semibold">{d.value}</span>
+                  <div className="w-full max-w-[46px] rounded-t transition-all" style={{ height: `${(d.value / niceMax) * H}px`, backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length] }} title={`${d.label}: ${d.value}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* x labels */}
+        <div className="mt-1.5 flex">
+          <div className="mr-2 w-6" />
+          <div className="flex flex-1 gap-2 px-1">
+            {data.map((d) => (
+              <div key={d.label} className="flex-1 truncate text-center text-[11px] text-muted-foreground" title={d.label}>{d.label}</div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground">{xLabel}</div>
+      </div>
     </div>
   );
 }

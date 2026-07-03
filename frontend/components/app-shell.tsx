@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Sparkles, LayoutDashboard, GraduationCap, Tv, ListChecks, Flame,
-  ScanSearch, BookOpenCheck, Image as ImageIcon, Trophy, LogOut, Menu, X, Flame as FlameIcon,
-  ListTodo, BadgeCheck, Wrench, Anchor, Award, Shield, BarChart3, LifeBuoy,
+  Sparkles, LayoutDashboard, GraduationCap, Tv, Trophy, LogOut, Menu, X, Flame as FlameIcon,
+  ListTodo, BadgeCheck, Wrench, Shield, BarChart3, LifeBuoy, Wand2, Sun, Moon, Monitor,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,22 +18,13 @@ import { AccountMenu } from "@/components/account-menu";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/academy", label: "Learning Hub", icon: GraduationCap },
+  { href: "/tools", label: "AI Tools", icon: Wand2 },
   { href: "/reference-channels", label: "Reference Channels", icon: Tv },
   { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
   { href: "/checklists", label: "Checklists", icon: ListTodo },
-  { href: "/quizzes", label: "Quizzes", icon: ListChecks },
-  { href: "/challenges", label: "Challenges", icon: Flame },
   { href: "/tracker", label: "Tracker Analytics", icon: BarChart3 },
   { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
   { href: "/guide", label: "Guide & Help", icon: LifeBuoy },
-];
-
-const TOOLS = [
-  { href: "/tools/broll", label: "Script → B-roll", icon: ScanSearch },
-  { href: "/tools/hook", label: "Hook Analyser", icon: Anchor },
-  { href: "/tools/senior-editor", label: "Senior Editor", icon: Award },
-  { href: "/tools/storytelling", label: "Storytelling Coach", icon: BookOpenCheck },
-  { href: "/tools/slides", label: "Slide Analyzer", icon: ImageIcon },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -69,14 +60,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <span className="font-bold">EditMentor<span className="text-gradient"> AI</span></span>
       </Link>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3">
         {NAV.map((item) => (
-          <NavLink key={item.href} {...item} active={pathname === item.href} />
-        ))}
-        <div className="px-3 pb-2 pt-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          AI Tools
-        </div>
-        {TOOLS.map((item) => (
           <NavLink key={item.href} {...item} active={pathname === item.href} />
         ))}
         {user.is_admin && (
@@ -90,13 +75,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="space-y-2 border-t border-border p-3">
+        <ThemeSwitcher />
         <div className="flex items-center justify-between rounded-lg bg-secondary/50 px-3 py-2">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{user.full_name || user.email}</div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <FlameIcon className="h-3 w-3 text-orange-400" /> {user.streak_days} day streak
-            </div>
+            <div className="truncate text-xs text-muted-foreground">{user.email}</div>
           </div>
           <Button variant="ghost" size="icon" onClick={logout} title="Log out">
             <LogOut className="h-4 w-4" />
@@ -145,6 +129,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 p-5 md:p-8">{children}</main>
       </div>
+    </div>
+  );
+}
+
+function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme();
+  const opts: { value: Theme; label: string; icon: any }[] = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ];
+  return (
+    <div className="grid grid-cols-3 gap-1 rounded-lg bg-secondary/40 p-1">
+      {opts.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => setTheme(o.value)}
+          className={cn(
+            "flex flex-col items-center gap-1 rounded-md py-1.5 text-[11px] font-medium transition-colors",
+            theme === o.value ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+          )}
+          title={o.label}
+        >
+          <o.icon className="h-4 w-4" /> {o.label}
+        </button>
+      ))}
     </div>
   );
 }
