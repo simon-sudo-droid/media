@@ -16,6 +16,13 @@ from app.models.progress import (
     ChecklistItemCompletion,
     ActivityLog,
 )
+from app.models.hub import (
+    TrackerEntry,
+    GlossaryTerm,
+    HelpQuestion,
+    FaqEntry,
+    ChangelogEntry,
+)
 
 __all__ = [
     "User",
@@ -32,4 +39,9 @@ __all__ = [
     "ChallengeCompletion",
     "ChecklistItemCompletion",
     "ActivityLog",
+    "TrackerEntry",
+    "GlossaryTerm",
+    "HelpQuestion",
+    "FaqEntry",
+    "ChangelogEntry",
 ]

@@ -10,9 +10,12 @@ from sqlalchemy import select, func
 from app.core.database import SessionLocal
 from app.models import (
     Challenge,
+    ChangelogEntry,
     Checklist,
     ChecklistItem,
     Course,
+    FaqEntry,
+    GlossaryTerm,
     Lesson,
     Quiz,
     QuizQuestion,
@@ -720,6 +723,65 @@ CHECKLISTS = [
 ]
 
 
+# ─────────────────────────────────────────────────────────────
+# Glossary (video-editing dictionary)
+# ─────────────────────────────────────────────────────────────
+GLOSSARY = [
+    ("B-roll", "Supplementary footage cut over the main shot or narration to add context, cover edits, and keep the visuals dynamic."),
+    ("A-roll", "Your primary footage — usually the talking head or main subject that carries the story."),
+    ("J-cut", "An edit where the audio of the next clip starts before its video, pulling the viewer forward into the scene."),
+    ("L-cut", "An edit where the audio of the current clip continues over the video of the next one, easing the transition."),
+    ("Jump cut", "A cut between two similar shots that jumps in time, creating a deliberate (or jarring) hop."),
+    ("Match cut", "A cut between two shots linked by similar composition, motion, or subject for a seamless transition."),
+    ("Cutaway", "A shot of something other than the main subject, used to add detail or hide an edit."),
+    ("Montage", "A sequence of short shots edited together to compress time or show progress."),
+    ("Cross-dissolve", "A transition where one shot fades into the next; signals a change in time or place."),
+    ("Color grading", "Creatively adjusting color and tone to set mood and a consistent look (distinct from basic correction)."),
+    ("Color correction", "Fixing exposure and white balance so footage looks natural and shots match."),
+    ("LUT", "Look-Up Table — a preset that maps input colors to output colors to apply a look or convert log footage."),
+    ("Keyframe", "A marker that sets a value (position, opacity, volume) at a point in time so it can animate between markers."),
+    ("Timeline", "The editing workspace where clips, audio, and effects are arranged in sequence over time."),
+    ("Sequence", "A container in the timeline holding your edited clips at a set resolution and frame rate."),
+    ("Ripple edit", "Trimming a clip and automatically shifting everything after it to close the gap."),
+    ("Roll edit", "Moving the cut point between two adjacent clips without changing the total duration."),
+    ("Slip edit", "Changing which part of a clip is shown without moving its position or duration in the timeline."),
+    ("Slide edit", "Moving a clip along the timeline while adjacent clips adjust to fill the space."),
+    ("Proxy", "A lightweight, lower-resolution copy of footage used for smooth editing; swapped for the original at export."),
+    ("Transcode", "Converting footage from one codec/format to another (e.g., to an edit-friendly codec)."),
+    ("Aspect ratio", "The width-to-height ratio of the frame (16:9 landscape, 9:16 vertical, 1:1 square)."),
+    ("Frame rate", "How many frames are shown per second (fps) — e.g., 24, 30, 60."),
+    ("Bitrate", "The amount of data per second of video; higher bitrate means better quality and larger files."),
+    ("Render", "Processing the timeline (effects, transitions) into playable/exportable video."),
+    ("Audio ducking", "Automatically lowering music when dialogue or voiceover plays so speech stays clear."),
+    ("Sound bed", "A background music or ambience layer that runs under the main audio."),
+    ("Lower third", "A graphic in the lower portion of the frame showing a name, title, or caption."),
+    ("Transition", "A visual effect that bridges two clips (cut, dissolve, wipe, whoosh-led cut, etc.)."),
+    ("Retention editing", "Editing to keep viewers watching — tight pacing, pattern interrupts, and removing dead air."),
+    ("Hook", "The opening seconds designed to grab attention and stop the scroll."),
+]
+
+
+# ─────────────────────────────────────────────────────────────
+# Guide & Help — FAQ + Changelog
+# ─────────────────────────────────────────────────────────────
+FAQS = [
+    ("How do I log my daily work?", "Open Tracker Analytics, click “New entry”, fill the date, output link, episode, clip name, leadership month/day, and case-study reel, then Save. Your entry is automatically saved under your name."),
+    ("Can I edit an entry after saving?", "No — once saved, entries lock. Only an admin can edit or correct a saved entry, to keep the output log accurate."),
+    ("How is “clips submitted” counted in the charts?", "Each tracker entry that has a clip name counts as one clip. The charts and summary update live from real saved entries."),
+    ("How do I add a glossary term?", "Go to Learning Hub → Glossary, click “+ Add Term”, enter the term and definition, and save. New terms appear at the top."),
+    ("Where did the Beginner/Intermediate/Advanced courses go?", "The tiered courses now live in the Challenges section. The Learning Academy is now the Learning Hub (Marketing Mastery, Books & Courses, Glossary)."),
+    ("How do I get a question answered?", "Use “Ask a question” in Guide & Help. An admin answers it, and the best answers get promoted into this FAQ."),
+]
+
+CHANGELOG = [
+    ("2026-06-26", "Learning Hub, Tracker Analytics & Guide", "Learning Academy became the Learning Hub (Marketing Mastery, Books & Courses, Glossary). Added Tracker Analytics with per-editor charts and a self-serve Guide & Help.", "Feature", 5),
+    ("2026-06-17", "Light & dark mode", "Choose your appearance in Settings — System, Light, or Dark.", "Feature", 4),
+    ("2026-06-17", "IT Technical Issues hub", "Fixes for Riverside, Premiere Pro, Frame.io, HeyGen, ElevenLabs & Storyblocks.", "Content", 3),
+    ("2026-06-16", "Hook Analyser & Senior Editor", "New AI tools plus 25 more quiz questions.", "Feature", 2),
+    ("2026-06-15", "Checklists & Approved Videos", "Production checklists and approved reference edits.", "Feature", 1),
+]
+
+
 def run_seed() -> None:
     db = SessionLocal()
     try:
@@ -768,6 +830,18 @@ def run_seed() -> None:
                 for i, text in enumerate(cl["items"]):
                     checklist.items.append(ChecklistItem(text=text, order_index=i))
                 db.add(checklist)
+
+        if db.scalar(select(func.count()).select_from(GlossaryTerm)) == 0:
+            for term, definition in GLOSSARY:
+                db.add(GlossaryTerm(term=term, definition=definition))
+
+        if db.scalar(select(func.count()).select_from(FaqEntry)) == 0:
+            for i, (q, a) in enumerate(FAQS):
+                db.add(FaqEntry(question=q, answer=a, order_index=i))
+
+        if db.scalar(select(func.count()).select_from(ChangelogEntry)) == 0:
+            for entry_date, title, body, tag, order_index in CHANGELOG:
+                db.add(ChangelogEntry(entry_date=entry_date, title=title, body=body, tag=tag, order_index=order_index))
 
         db.commit()
     finally:

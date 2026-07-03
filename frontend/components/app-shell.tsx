@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, ListChecks, Flame,
   ScanSearch, BookOpenCheck, Image as ImageIcon, Trophy, LogOut, Menu, X, Flame as FlameIcon,
-  ListTodo, BadgeCheck, Wrench, Anchor, Award, Shield,
+  ListTodo, BadgeCheck, Wrench, Anchor, Award, Shield, BarChart3, LifeBuoy,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,15 @@ import { AccountMenu } from "@/components/account-menu";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/academy", label: "Learning Academy", icon: GraduationCap },
+  { href: "/academy", label: "Learning Hub", icon: GraduationCap },
   { href: "/reference-channels", label: "Reference Channels", icon: Tv },
   { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
   { href: "/checklists", label: "Checklists", icon: ListTodo },
   { href: "/quizzes", label: "Quizzes", icon: ListChecks },
   { href: "/challenges", label: "Challenges", icon: Flame },
+  { href: "/tracker", label: "Tracker Analytics", icon: BarChart3 },
   { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
+  { href: "/guide", label: "Guide & Help", icon: LifeBuoy },
 ];
 
 const TOOLS = [

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
@@ -352,6 +352,121 @@ class LeaderboardEntry(BaseModel):
     full_name: str
     xp: int
     level: str
+
+
+# ── Tracker Analytics ────────────────────────────────────────
+class TrackerEntryCreate(BaseModel):
+    entry_date: date
+    output_link: str = Field(default="", max_length=2000)
+    episode: str = Field(default="", max_length=120)
+    clip_name: str = Field(default="", max_length=255)
+    leadership_month: str = Field(default="", max_length=60)
+    leadership_day: str = Field(default="", max_length=20)
+    case_study_reel: str = Field(default="", max_length=255)
+
+
+class TrackerEntryUpdate(BaseModel):
+    entry_date: date | None = None
+    output_link: str | None = Field(default=None, max_length=2000)
+    episode: str | None = Field(default=None, max_length=120)
+    clip_name: str | None = Field(default=None, max_length=255)
+    leadership_month: str | None = Field(default=None, max_length=60)
+    leadership_day: str | None = Field(default=None, max_length=20)
+    case_study_reel: str | None = Field(default=None, max_length=255)
+
+
+class TrackerEntryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    editor_name: str = ""
+    entry_date: date
+    output_link: str
+    episode: str
+    clip_name: str
+    leadership_month: str
+    leadership_day: str
+    case_study_reel: str
+    created_at: datetime
+
+
+class EditorOut(BaseModel):
+    id: int
+    name: str
+
+
+class TrackerStatByEditor(BaseModel):
+    editor_name: str
+    clips: int
+
+
+class TrackerStatByPeriod(BaseModel):
+    period: str          # e.g. "2026-06" or "2026-06-14"
+    clips: int
+
+
+class TrackerStats(BaseModel):
+    total_entries: int
+    total_clips: int
+    distinct_editors: int
+    by_editor: list[TrackerStatByEditor]
+    by_period: list[TrackerStatByPeriod]
+
+
+# ── Glossary ─────────────────────────────────────────────────
+class GlossaryTermCreate(BaseModel):
+    term: str = Field(min_length=1, max_length=120)
+    definition: str = Field(min_length=1, max_length=4000)
+
+
+class GlossaryTermOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    term: str
+    definition: str
+    created_at: datetime
+
+
+# ── Guide & Help ─────────────────────────────────────────────
+class FaqOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    question: str
+    answer: str
+
+
+class ChangelogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    entry_date: str
+    title: str
+    body: str
+    tag: str
+
+
+class HelpQuestionCreate(BaseModel):
+    question: str = Field(min_length=3, max_length=2000)
+
+
+class HelpAnswerRequest(BaseModel):
+    answer: str = Field(min_length=1, max_length=4000)
+
+
+class HelpQuestionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    asker_name: str = ""
+    question: str
+    answer: str
+    answered: bool
+    promoted: bool
+    created_at: datetime
 
 
 QuizResultOut.model_rebuild()

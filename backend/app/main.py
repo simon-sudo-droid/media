@@ -9,7 +9,10 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.ratelimit import limiter
-from app.api.routes import admin, ai, auth, challenges, checklists, content, dashboard, quizzes
+from app.api.routes import (
+    admin, ai, auth, challenges, checklists, content, dashboard, quizzes,
+    tracker, glossary, help,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("editmentor")
@@ -80,3 +83,6 @@ app.include_router(checklists.router)
 app.include_router(ai.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
+app.include_router(tracker.router)
+app.include_router(glossary.router)
+app.include_router(help.router)
