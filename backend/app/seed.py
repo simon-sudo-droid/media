@@ -766,18 +766,26 @@ GLOSSARY = [
 # ─────────────────────────────────────────────────────────────
 FAQS = [
     ("How do I log my daily work?", "Open Tracker Analytics, click “New entry”, fill the date, output link, episode, clip name, leadership month/day, and case-study reel, then Save. Your entry is automatically saved under your name."),
-    ("Can I edit an entry after saving?", "No — once saved, entries lock. Only an admin can edit or correct a saved entry, to keep the output log accurate."),
-    ("How is “clips submitted” counted in the charts?", "Each tracker entry that has a clip name counts as one clip. The charts and summary update live from real saved entries."),
-    ("How do I add a glossary term?", "Go to Learning Hub → Glossary, click “+ Add Term”, enter the term and definition, and save. New terms appear at the top."),
-    ("Where did the Beginner/Intermediate/Advanced courses go?", "The tiered courses now live in the Challenges section. The Learning Academy is now the Learning Hub (Marketing Mastery, Books & Courses, Glossary)."),
-    ("How do I get a question answered?", "Use “Ask a question” in Guide & Help. An admin answers it, and the best answers get promoted into this FAQ."),
+    ("Can I edit an entry after saving?", "No — once saved, entries lock. Only an admin can edit, correct, or delete a saved entry, to keep the output log accurate."),
+    ("How is “clips submitted” counted in the charts?", "Each tracker entry that has a clip name counts as one clip. The bar charts and summary update live (auto-refresh) from real saved entries."),
+    ("How do I add a glossary term?", "Go to Learning Hub → Glossary, click “+ Add Term”, enter the term and definition, and save. It appears in the related-searches list and is searchable immediately."),
+    ("Where are the AI tools?", "They're all in one place: the “AI Tools” item in the sidebar opens a hub with Script → B-roll, Hook Analyser, Senior Editor, Storytelling Coach, and Slide Analyzer."),
+    ("Where are Quizzes and Challenges now?", "Inside Learning Hub → the “Quizzes & Challenges” tab, alongside the tiered Courses."),
+    ("How do the Marketing Mastery weeks work?", "In Learning Hub → Marketing Mastery, click any week to open a detailed lesson with an overview, what to practice/watch/learn, and 5 real-world scenarios."),
+    ("How do I switch between light and dark mode?", "Use the Light / Dark / System switcher at the bottom of the sidebar. “System” follows your device setting."),
+    ("I forgot my password — what do I do?", "On the login page, click “Forgot password?”, enter your email, and follow the reset link to set a new password."),
+    ("How do I get a question answered?", "Use “Ask a question” below. An admin answers it, and the best answers get promoted into this FAQ."),
 ]
 
 CHANGELOG = [
-    ("2026-06-26", "Learning Hub, Tracker Analytics & Guide", "Learning Academy became the Learning Hub (Marketing Mastery, Books & Courses, Glossary). Added Tracker Analytics with per-editor charts and a self-serve Guide & Help.", "Feature", 5),
-    ("2026-06-17", "Light & dark mode", "Choose your appearance in Settings — System, Light, or Dark.", "Feature", 4),
-    ("2026-06-17", "IT Technical Issues hub", "Fixes for Riverside, Premiere Pro, Frame.io, HeyGen, ElevenLabs & Storyblocks.", "Content", 3),
-    ("2026-06-16", "Hook Analyser & Senior Editor", "New AI tools plus 25 more quiz questions.", "Feature", 2),
+    ("2026-06-26", "Marketing Mastery goes deep", "Each week is now click-to-learn: a full overview plus 5 real-world Situation → Do this scenarios.", "Feature", 9),
+    ("2026-06-26", "Tracker cleanup controls", "Admins can now delete tracker entries; charts upgraded to a live, axis-and-gridline bar graph.", "Feature", 8),
+    ("2026-06-26", "Restructure: hubs & sidebar theme", "Quizzes & Challenges moved into the Learning Hub; all AI tools live under one “AI Tools” hub; Light/Dark/System moved to the sidebar.", "Feature", 7),
+    ("2026-06-26", "Learning Hub, Tracker & Guide", "Learning Academy became the Learning Hub (Marketing Mastery, Books & Courses, Glossary). Added Tracker Analytics and this Guide & Help.", "Feature", 6),
+    ("2026-06-17", "Security hardening", "Fixed the password-reset flow, added rate limiting, and locked down admin-only areas.", "Fix", 5),
+    ("2026-06-17", "Forgot / reset password", "Reset your password by email from the login page.", "Feature", 4),
+    ("2026-06-17", "Admin panel + Creative Intelligence", "Admins get user activity oversight and a live daily editing/AI trends digest.", "Feature", 3),
+    ("2026-06-16", "Hook Analyser & Senior Editor", "New AI tools plus more quiz questions.", "Feature", 2),
     ("2026-06-15", "Checklists & Approved Videos", "Production checklists and approved reference edits.", "Feature", 1),
 ]
 
@@ -835,12 +843,15 @@ def run_seed() -> None:
             for term, definition in GLOSSARY:
                 db.add(GlossaryTerm(term=term, definition=definition))
 
-        if db.scalar(select(func.count()).select_from(FaqEntry)) == 0:
-            for i, (q, a) in enumerate(FAQS):
+        # Per-question / per-title so new entries seed on deploy without a wipe.
+        existing_faq = set(db.scalars(select(FaqEntry.question)).all())
+        for i, (q, a) in enumerate(FAQS):
+            if q not in existing_faq:
                 db.add(FaqEntry(question=q, answer=a, order_index=i))
 
-        if db.scalar(select(func.count()).select_from(ChangelogEntry)) == 0:
-            for entry_date, title, body, tag, order_index in CHANGELOG:
+        existing_changelog = set(db.scalars(select(ChangelogEntry.title)).all())
+        for entry_date, title, body, tag, order_index in CHANGELOG:
+            if title not in existing_changelog:
                 db.add(ChangelogEntry(entry_date=entry_date, title=title, body=body, tag=tag, order_index=order_index))
 
         db.commit()
