@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   Sparkles, Brain, Trophy, Gauge, Palette, AudioLines, Type, Film,
-  ScanSearch, Star, ArrowRight, Scissors, Wand2, Play, Plus, Github,
+  ScanSearch, Star, ArrowRight, Scissors, Wand2, Play, Github,
   Twitter, Youtube, Instagram,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,20 +29,6 @@ const TILES = [
 
 const LOGOS = ["Premiere Pro", "DaVinci Resolve", "Final Cut", "After Effects", "CapCut", "YouTube"];
 
-const TESTIMONIALS = [
-  { name: "Michael L.", role: "Freelance Editor", quote: "The daily challenges rebuilt my instincts. My cuts are tighter and I actually know why now." },
-  { name: "Sofia G.", role: "YouTube Creator", quote: "Script-to-B-roll alone saves me hours every week. It feels like a senior editor sitting next to me." },
-  { name: "Jordan R.", role: "Agency Team Lead", quote: "We onboard new editors with the Learning Hub. Consistent quality, way less hand-holding." },
-];
-
-const FAQS = [
-  { q: "Can I start with the free plan?", a: "Yes — every feature is free. Create an account and you get the full Learning Hub, AI tools, challenges and tracker with no card required." },
-  { q: "Do I need editing software to learn?", a: "No. The lessons and AI tools are software-agnostic — the principles apply in Premiere, DaVinci, Final Cut or CapCut." },
-  { q: "What are the AI tools?", a: "A script-to-B-roll planner, hook analyser, storytelling coach, slide analyzer and a senior-editor review tool that critiques your decisions." },
-  { q: "How does progress tracking work?", a: "You earn XP for lessons, quizzes and challenges, climb skill levels, and log real editing work in the Tracker with live analytics." },
-  { q: "Is my work private?", a: "Anything you upload or paste is used only to generate your feedback. We don't sell or share your content." },
-];
-
 function Logo() {
   return (
     <div className="flex items-center gap-2">
@@ -65,8 +51,6 @@ export default function LandingPage() {
           <Logo />
           <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
-            <a href="#loved" className="transition-colors hover:text-foreground">Testimonials</a>
-            <a href="#faq" className="transition-colors hover:text-foreground">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/login"><Button variant="ghost" size="sm" className="pill">Log in</Button></Link>
@@ -179,85 +163,6 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ─────────────────────────────────────── */}
-      <section id="loved" className="relative z-10 border-t border-border/50 py-24">
-        <div className="container">
-          <div className="mx-auto max-w-2xl text-center">
-            <Badge variant="outline" className="mb-4 rounded-full">Loved by editors</Badge>
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Trusted by creators and teams</h2>
-          </div>
-          <div className="mt-14 grid gap-5 stagger md:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="lift">
-                <CardContent className="flex h-full flex-col gap-4 p-6">
-                  <div className="flex text-amber-400">{[...Array(5)].map((_, i) => <Star key={i} className="h-4 w-4 fill-amber-400" />)}</div>
-                  <p className="flex-1 text-sm leading-relaxed text-foreground/90">“{t.quote}”</p>
-                  <div className="flex items-center gap-3 pt-2">
-                    <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-primary to-fuchsia-500 text-sm font-bold text-white">
-                      {t.name[0]}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.role}</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FAQ ──────────────────────────────────────────────── */}
-      <section id="faq" className="relative z-10 border-t border-border/50 py-24">
-        <div className="container grid gap-10 md:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <Badge variant="outline" className="mb-4 rounded-full">FAQs</Badge>
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Frequently asked questions</h2>
-            <p className="mt-4 text-muted-foreground">Everything you need to know before you start.</p>
-          </div>
-          <div className="space-y-3">
-            {FAQS.map((f) => (
-              <details key={f.q} className="acc-item card-surface rounded-xl border border-border bg-card px-5 py-4">
-                <summary className="flex items-center justify-between gap-4 font-medium">
-                  {f.q}
-                  <Plus className="acc-chevron h-4 w-4 shrink-0 text-primary" />
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ──────────────────────────────────────────────── */}
-      <section className="relative z-10 border-t border-border/50 py-24">
-        <div className="container">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 px-6 py-16 text-center backdrop-blur-xl">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 top-1/3 horizon" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 horizon-arc" />
-            <div className="relative mx-auto flex max-w-2xl flex-col items-center gap-6">
-              <h2 className="text-3xl font-bold tracking-tight md:text-5xl">
-                Your next edit could be your best one yet
-              </h2>
-              <p className="max-w-xl text-muted-foreground">
-                Join EditMentor AI and start building the skills of a world-class editor — one challenge at a time.
-              </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/signup">
-                  <Button size="lg" className="pill w-full bg-white text-black shadow-xl shadow-black/20 hover:bg-white/90 sm:w-auto">
-                    Create your free account <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/login">
-                  <Button variant="outline" size="lg" className="pill w-full border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 sm:w-auto">Log in</Button>
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </section>

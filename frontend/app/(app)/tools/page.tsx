@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { Wand2, ScanSearch, Anchor, Award, BookOpenCheck, Image as ImageIcon, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHero } from "@/components/page-hero";
+
+const TILES = [
+  { icon: ScanSearch, x: "left-[9%]", y: "top-[28%]", d: "0s" },
+  { icon: Anchor, x: "left-[16%]", y: "top-[66%]", d: "0.9s" },
+  { icon: Award, x: "right-[10%]", y: "top-[26%]", d: "0.5s" },
+  { icon: BookOpenCheck, x: "right-[17%]", y: "top-[66%]", d: "1.3s" },
+];
 
 const TOOLS = [
   { href: "/tools/broll", icon: ScanSearch, title: "Script → B-roll", desc: "Turn a script into timecoded b-roll placements + multi-source search & generation prompts." },
@@ -15,13 +23,13 @@ const TOOLS = [
 export default function ToolsHubPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-7">
-      <div className="animate-in">
-        <div className="flex items-center gap-2">
-          <Wand2 className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">AI Tools</h1>
-        </div>
-        <p className="text-muted-foreground">Everything in one place — pick a tool to get instant, editor-focused feedback.</p>
-      </div>
+      <PageHero
+        eyebrow="AI Tools"
+        icon={Wand2}
+        title={<>Your AI editing <span className="text-gradient">toolkit</span></>}
+        subtitle="Everything in one place — pick a tool to get instant, editor-focused feedback."
+        tiles={TILES}
+      />
 
       <div className="grid gap-5 stagger sm:grid-cols-2">
         {TOOLS.map((t) => (

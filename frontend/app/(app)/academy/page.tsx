@@ -13,6 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChallengeCard, type Challenge } from "@/components/challenge-card";
+import { PageHero } from "@/components/page-hero";
+
+const HUB_TILES = [
+  { icon: Target, x: "left-[9%]", y: "top-[28%]", d: "0s" },
+  { icon: Library, x: "left-[16%]", y: "top-[66%]", d: "0.9s" },
+  { icon: BookOpen, x: "right-[10%]", y: "top-[26%]", d: "0.5s" },
+  { icon: Flame, x: "right-[17%]", y: "top-[66%]", d: "1.3s" },
+];
 
 /* ── Tab 1: Marketing Mastery ──────────────────────────────── */
 type Week = {
@@ -225,13 +233,13 @@ export default function LearningHubPage() {
   const [tab, setTab] = useState("mastery");
   return (
     <div className="mx-auto max-w-6xl space-y-7">
-      <div className="animate-in">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold tracking-tight">Learning Hub</h1>
-        </div>
-        <p className="text-muted-foreground">Get better every week — the path, the library, the language, and the practice.</p>
-      </div>
+      <PageHero
+        eyebrow="Learning Hub"
+        icon={GraduationCap}
+        title={<>Get better <span className="text-gradient">every week</span></>}
+        subtitle="The path, the library, the language, and the practice — everything to sharpen your craft."
+        tiles={HUB_TILES}
+      />
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
