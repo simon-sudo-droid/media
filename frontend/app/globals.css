@@ -151,3 +151,43 @@ body > * { position: relative; z-index: 1; }
     inset 0 1px 0 0 hsl(0 0% 100% / 0.06),
     0 10px 30px -14px hsl(240 30% 2% / 0.7);
 }
+
+/* ── Codable-style hero: glowing horizon + floating tiles ─────── */
+/* A luminous "sunrise" bloom rising from the bottom-center of a hero,
+   like the reference design. Sits behind hero content (z-0). */
+.horizon {
+  background:
+    radial-gradient(closest-side at 50% 118%, hsl(200 95% 72% / 0.55), hsl(210 90% 62% / 0.28) 40%, transparent 72%),
+    radial-gradient(60% 90% at 50% 128%, hsl(263 90% 68% / 0.40), transparent 70%);
+}
+/* Bright thin arc that reads as the horizon edge. */
+.horizon-arc {
+  background:
+    radial-gradient(closest-side at 50% 100%, transparent 78%, hsl(195 100% 85% / 0.9) 82%, transparent 86%);
+  filter: blur(0.5px);
+}
+/* Floating rounded icon tiles scattered around the hero. */
+.hero-tile {
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  border: 1px solid hsl(0 0% 100% / 0.08);
+  background: hsl(240 12% 10% / 0.55);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 18px 40px -20px hsl(240 40% 2% / 0.8);
+  backdrop-filter: blur(8px);
+}
+:root .hero-tile { background: hsl(240 20% 98% / 0.7); border-color: hsl(240 10% 88%); }
+
+/* Pill nav / CTA buttons with soft glow. */
+.pill { border-radius: 9999px; }
+
+/* Accordion (FAQ) chevron rotate. */
+.acc-item summary { list-style: none; cursor: pointer; }
+.acc-item summary::-webkit-details-marker { display: none; }
+.acc-item[open] .acc-chevron { transform: rotate(45deg); }
+.acc-chevron { transition: transform 0.2s ease; }
+
+/* Slow drift for background tiles (calmer than animate-float). */
+@keyframes drift-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.animate-drift { animation: drift-y 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-drift { animation: none !important; } }
