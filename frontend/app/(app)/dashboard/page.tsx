@@ -95,7 +95,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Zap} label="Total XP" value={data?.user.xp.toLocaleString() ?? "—"} accent="text-primary" />
         <StatCard icon={Trophy} label="Skill Level" value={data?.user.level ?? "—"} accent="text-amber-400" />
         <StatCard icon={Flame} label="Day Streak" value={data ? `${data.user.streak_days}` : "—"} accent="text-orange-400" />

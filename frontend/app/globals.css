@@ -94,21 +94,47 @@
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+/* Card entrance: arrives BIG, settles down to normal size. */
+@keyframes zoom-settle {
+  0%   { opacity: 0; transform: scale(1.10) translateY(10px); }
+  55%  { opacity: 1; transform: scale(0.985); }
+  100% { opacity: 1; transform: scale(1); }
+}
 
 .animate-in { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-pop { animation: pop-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-float { animation: float-y 4s ease-in-out infinite; }
 
-/* Stagger helpers for grids/lists */
-.stagger > * { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.stagger > *:nth-child(1) { animation-delay: 0.02s; }
-.stagger > *:nth-child(2) { animation-delay: 0.06s; }
-.stagger > *:nth-child(3) { animation-delay: 0.10s; }
-.stagger > *:nth-child(4) { animation-delay: 0.14s; }
-.stagger > *:nth-child(5) { animation-delay: 0.18s; }
-.stagger > *:nth-child(6) { animation-delay: 0.22s; }
-.stagger > *:nth-child(7) { animation-delay: 0.26s; }
-.stagger > *:nth-child(8) { animation-delay: 0.30s; }
+/* ── Sequential page reveal ───────────────────────────────── */
+/* When a page (or a .seq container) opens, its sections arrive
+   top-to-bottom: heading first, then each following section.   */
+main > div > *:not(.stagger):not(.seq),
+.seq > *:not(.stagger) { animation: fade-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+main > div > *:nth-child(1), .seq > *:nth-child(1) { animation-delay: 0.05s; }
+main > div > *:nth-child(2), .seq > *:nth-child(2) { animation-delay: 0.18s; }
+main > div > *:nth-child(3), .seq > *:nth-child(3) { animation-delay: 0.31s; }
+main > div > *:nth-child(4), .seq > *:nth-child(4) { animation-delay: 0.44s; }
+main > div > *:nth-child(5), .seq > *:nth-child(5) { animation-delay: 0.57s; }
+main > div > *:nth-child(6), .seq > *:nth-child(6) { animation-delay: 0.70s; }
+main > div > *:nth-child(7), .seq > *:nth-child(7) { animation-delay: 0.83s; }
+main > div > *:nth-child(n+8), .seq > *:nth-child(n+8) { animation-delay: 0.95s; }
+
+/* Stagger: cards arrive ONE BY ONE — big, then settle to place.
+   Base delay lets the page heading/section land first. */
+.stagger > * { animation: zoom-settle 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > *:nth-child(1)  { animation-delay: 0.35s; }
+.stagger > *:nth-child(2)  { animation-delay: 0.47s; }
+.stagger > *:nth-child(3)  { animation-delay: 0.59s; }
+.stagger > *:nth-child(4)  { animation-delay: 0.71s; }
+.stagger > *:nth-child(5)  { animation-delay: 0.83s; }
+.stagger > *:nth-child(6)  { animation-delay: 0.95s; }
+.stagger > *:nth-child(7)  { animation-delay: 1.07s; }
+.stagger > *:nth-child(8)  { animation-delay: 1.19s; }
+.stagger > *:nth-child(9)  { animation-delay: 1.31s; }
+.stagger > *:nth-child(10) { animation-delay: 1.43s; }
+.stagger > *:nth-child(11) { animation-delay: 1.55s; }
+.stagger > *:nth-child(12) { animation-delay: 1.67s; }
+.stagger > *:nth-child(n+13) { animation-delay: 1.75s; }
 
 /* Interactive card lift */
 .lift { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
@@ -122,7 +148,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-in, .animate-pop, .animate-float, .stagger > *, .shimmer { animation: none !important; }
+  .animate-in, .animate-pop, .animate-float, .stagger > *, .shimmer,
+  main > div > *, .seq > * { animation: none !important; }
   .lift:hover { transform: none; }
 }
 

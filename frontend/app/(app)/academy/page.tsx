@@ -136,7 +136,7 @@ function Mastery() {
 
   if (w) {
     return (
-      <div className="space-y-5 animate-in">
+      <div className="seq space-y-5">
         <button onClick={() => setSel(null)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to all weeks
         </button>
