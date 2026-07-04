@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChallengeCard, type Challenge } from "@/components/challenge-card";
 import { PageHero } from "@/components/page-hero";
+import { WEEKS } from "@/lib/mastery";
 
 const HUB_TILES = [
   { icon: Target, x: "left-[9%]", y: "top-[28%]", d: "0s" },
@@ -22,134 +23,7 @@ const HUB_TILES = [
   { icon: Flame, x: "right-[17%]", y: "top-[66%]", d: "1.3s" },
 ];
 
-/* ── Tab 1: Marketing Mastery ──────────────────────────────── */
-type Week = {
-  week: number; title: string; summary: string; overview: string;
-  practice: string; watch: string; learn: string;
-  scenarios: { title: string; situation: string; approach: string }[];
-};
-const WEEKS: Week[] = [
-  {
-    week: 1, title: "Foundations & the cut",
-    summary: "When to cut, what to cut on, and how to make cuts invisible.",
-    overview: "The cut is the editor's most basic tool — and the hardest to truly master. Every cut should answer one question: “what does the viewer need to see next?” This week you build the instinct for cutting on motion, using J/L cuts to smooth transitions, and hiding jumps so the edit feels effortless rather than assembled.",
-    practice: "Re-cut one clip three different ways; cut strictly on action.",
-    watch: "Breakdowns of clean dialogue scenes; notice where they cut.",
-    learn: "Hard cuts, J-cuts, L-cuts, cutaways, cutting on action.",
-    scenarios: [
-      { title: "Choppy dialogue", situation: "An interview feels jerky after you trim it.", approach: "Cut on the natural breath or pause, use J/L cuts so audio leads or trails the picture, and cover any hard jump with a relevant cutaway." },
-      { title: "Two takes, one line", situation: "You have two takes of the same sentence and want one clean line.", approach: "Cut mid-sentence on a matching word or mouth shape (a match cut) so the two takes read as a single performance." },
-      { title: "Dead pause mid-answer", situation: "There's a 4-second silent gap in a good answer.", approach: "Ripple-trim the gap to close it — or, if the pause is meaningful, bridge it with a cutaway instead of leaving dead air." },
-      { title: "Action cut looks jumpy", situation: "Cutting between two shots of the same movement looks off.", approach: "Cut in the middle of the action and match motion direction and speed across the cut so the eye carries over it." },
-      { title: "Only a static talking head", situation: "The client gave you one locked-off talking-head shot.", approach: "Create visual cuts with subtle punch-ins (a small scale-up) on each new point, so the frame changes even without extra footage." },
-    ],
-  },
-  {
-    week: 2, title: "Pacing & rhythm",
-    summary: "Control energy with shot length, silence, and cutting to rhythm.",
-    overview: "Pacing is the heartbeat of an edit — it tells the viewer how to feel. Fast cuts create energy; held shots create weight. This week you learn to read the energy curve of your content and music, vary shot length on purpose, and use silence as deliberately as sound.",
-    practice: "Cut a 30-second montage to the beat of a track.",
-    watch: "High-retention edits — count how long each shot holds.",
-    learn: "Varying shot length, cutting on motion, pattern interrupts.",
-    scenarios: [
-      { title: "Sagging middle", situation: "Retention dips hard around the 40% mark.", approach: "Shorten shots, cut tangents, and add a pattern interrupt (zoom, SFX, or b-roll) every 7–10 seconds to reset attention." },
-      { title: "Montage to music", situation: "You need an energetic progress montage.", approach: "Mark the beats, cut on the downbeat, and match shot length to the track's energy — quicker in the chorus, longer in the verse." },
-      { title: "Emotional beat rushed", situation: "A heartfelt line gets cut away too quickly.", approach: "Hold the shot a beat longer and add a breath of silence so the moment lands before you cut." },
-      { title: "Energy cliff after the hook", situation: "A punchy intro drops into a flat body.", approach: "Carry momentum with motivated movement and slightly quicker cuts; don't let the pace fall off a cliff once the hook ends." },
-      { title: "Podcast clip drags", situation: "A talking clip feels slow and loses people.", approach: "Tighten by removing filler and pauses, and cut to a reaction or cutaway on the punchline for a beat of rhythm." },
-    ],
-  },
-  {
-    week: 3, title: "Hooks (first 3 seconds)",
-    summary: "Open with a curiosity gap or a bold promise — instantly.",
-    overview: "The first three seconds decide whether anyone watches the next thirty. A hook has to create a curiosity gap or a bold, specific promise before the viewer's thumb moves. This week you learn to front-load intrigue, pair verbal and visual hooks, and open loops the viewer needs to close.",
-    practice: "Make five different openings for the same video.",
-    watch: "Top short-form hooks — why do they stop the scroll?",
-    learn: "Open loops, bold claims, curiosity gaps, teaser-then-rewind.",
-    scenarios: [
-      { title: "Slow intro (“Hi guys…”)", situation: "The video opens with a greeting and setup.", approach: "Delete the greeting entirely; open on the single most surprising line or result." },
-      { title: "Buried payoff", situation: "The best moment is at 0:40.", approach: "Cold-open with a teaser of that payoff, then rewind — “here's how I got there.”" },
-      { title: "No visual hook", situation: "The opening is verbally strong but visually dead.", approach: "Pair the line with motion, bold text, or a striking b-roll frame within the first second." },
-      { title: "Weak, generic claim", situation: "The hook is vague (“let's talk about focus”).", approach: "Make it specific and stakes-driven: “I wasted 3 years ignoring this one habit.”" },
-      { title: "Question hook falls flat", situation: "A yes/no question opens the video.", approach: "Replace it with an open loop the viewer must resolve, not a question they can answer and scroll past." },
-    ],
-  },
-  {
-    week: 4, title: "B-roll & coverage",
-    summary: "Choose visuals that represent the idea and cover the whole edit.",
-    overview: "B-roll advances meaning and hides cuts — it's never just filler. This week you learn to mix shot types for variety, choose conceptual visuals for abstract lines, and cover an entire talking-head edit so the eye never gets bored.",
-    practice: "Cover a full talking head using only b-roll.",
-    watch: "Conceptual (non-literal) b-roll examples.",
-    learn: "Literal vs conceptual, shot-type variety, timing b-roll.",
-    scenarios: [
-      { title: "Repetitive stock", situation: "Everything feels same-y and repetitive.", approach: "Mix wide, medium, and close-up; never reuse the same clip; vary angle and subject across the sequence." },
-      { title: "Abstract line", situation: "The script says “growth takes time.”", approach: "Use conceptual b-roll — a plant growing, a timelapse, calendar pages flipping — instead of a literal chart." },
-      { title: "Covering a jump cut", situation: "There's a visible jump in the interview.", approach: "Lay a relevant cutaway over the cut point so the edit becomes invisible." },
-      { title: "No b-roll available", situation: "You have nothing but the A-roll.", approach: "Use text/motion graphics, punch-ins, or search/generate stock scoped tightly to that beat." },
-      { title: "B-roll timing", situation: "Your b-roll feels disconnected from the words.", approach: "Land the b-roll slightly before or on the matching narration so it reinforces the point as it's said." },
-    ],
-  },
-  {
-    week: 5, title: "Storytelling structure",
-    summary: "Find and shape the story in raw footage: setup, tension, payoff.",
-    overview: "Even a 30-second clip is a story. Setup → tension → payoff is what keeps people watching to the end. This week you learn to find the through-line in rambling footage, build stakes, and land endings that pay off attention.",
-    practice: "Build a 60-second story with setup–tension–payoff.",
-    watch: "Documentary and video-essay structure.",
-    learn: "The three-act spine; callbacks; stakes and payoff.",
-    scenarios: [
-      { title: "Rambling interview", situation: "45 minutes of unstructured talking.", approach: "Find the through-line, build setup→conflict→resolution around it, and cut everything that doesn't serve that spine." },
-      { title: "Weak ending", situation: "The video just trails off.", approach: "End on a callback to the hook or a clear takeaway/CTA so it lands rather than fades." },
-      { title: "No tension", situation: "There's nothing pulling the viewer forward.", approach: "Make the stakes or consequence explicit early so the outcome actually matters." },
-      { title: "Montage with no arc", situation: "A montage feels like random clips.", approach: "Give it a mini arc — before → process → after — so even the montage tells a story." },
-      { title: "Reorder for impact", situation: "The footage is chronological but flat.", approach: "Move the most compelling moment earlier as an open loop, then resolve it later." },
-    ],
-  },
-  {
-    week: 6, title: "Short-form vs long-form",
-    summary: "Repurpose one shoot into platform-native edits.",
-    overview: "The same footage becomes very different edits depending on the platform. This week you learn to pull short-form moments from long content, edit to each platform's retention norms, and repurpose one asset into many.",
-    practice: "Turn one interview into a Reel AND a long cut.",
-    watch: "How creators repurpose across platforms.",
-    learn: "Retention graphs, platform norms, reframing 9:16.",
-    scenarios: [
-      { title: "Reel from a long interview", situation: "You need a 45s Reel from a 40-min talk.", approach: "Pull a self-contained moment with its own hook and payoff, then reframe it to 9:16." },
-      { title: "Long-form retention", situation: "A 12-min video loses viewers midway.", approach: "Chapter it, tease upcoming payoffs, and place pattern interrupts at the drop-off points." },
-      { title: "Caption strategy", situation: "Deciding how to caption each format.", approach: "Bold, well-timed captions for sound-off short-form; lighter, cleaner captions for long-form." },
-      { title: "Aspect-ratio reframe", situation: "Landscape footage needs to go vertical.", approach: "Auto-reframe to center the key action, then fix framing manually shot by shot." },
-      { title: "One into many", situation: "You want maximum output from one shoot.", approach: "Slice the long piece into several clips, each with its own distinct hook." },
-    ],
-  },
-  {
-    week: 7, title: "Sound & color",
-    summary: "Ducking, loudness targets, and a clean, simple grade.",
-    overview: "Audio is half the edit and color sets the mood. Bad audio loses viewers faster than bad video. This week you learn to balance music under dialogue, hit consistent loudness, and apply a correction-first grade that looks intentional.",
-    practice: "Duck music under a VO; apply a simple grade.",
-    watch: "Sound-design and color breakdowns.",
-    learn: "−16 LUFS loudness, ducking, correction before grade, LUTs.",
-    scenarios: [
-      { title: "Music drowns dialogue", situation: "The track fights the voiceover.", approach: "Duck music ~12 dB under speech and keep dialogue around −16 LUFS so words stay clear." },
-      { title: "Inconsistent loudness", situation: "Volume jumps between clips.", approach: "Normalize to a target loudness and ride levels so the whole piece sits even." },
-      { title: "Flat footage", situation: "The image looks dull and grey.", approach: "Correct exposure and white balance first, then add a gentle creative grade or LUT." },
-      { title: "Mismatched shots", situation: "Two cameras don't match.", approach: "Match them using scopes (waveform/vectorscope), not just your eye, then fine-tune." },
-      { title: "Harsh audio", situation: "The voice is sibilant with background hiss.", approach: "De-ess, apply noise reduction, and lay room tone under cuts so silence doesn't pop." },
-    ],
-  },
-  {
-    week: 8, title: "Client work & delivery",
-    summary: "Briefs, revisions, naming, and delivering to spec.",
-    overview: "Great editors are reliable, not just talented. This week you learn to interrogate a brief, manage revisions without scope creep, and deliver clean files to the exact platform spec — the professionalism that gets you rehired.",
-    practice: "Do a revision pass; export to spec and name files.",
-    watch: "How editors handle feedback and briefs.",
-    learn: "Deliverables, revision rounds, file naming, export specs.",
-    scenarios: [
-      { title: "Vague brief", situation: "The client just says “make it pop.”", approach: "Ask for references, target platform, length, and tone before you touch the timeline." },
-      { title: "Endless revisions", situation: "Feedback keeps trickling in.", approach: "Batch feedback into rounds, confirm scope, and deliver versioned exports; define what “done” means up front." },
-      { title: "Wrong export", situation: "The file looks wrong on the platform.", approach: "Deliver to spec — correct codec, resolution, fps, and loudness (H.264 MP4 for most)." },
-      { title: "File chaos", situation: "Nobody can find the latest version.", approach: "Name files consistently (project-episode-version) and keep the project and bins organized." },
-      { title: "Deadline at risk", situation: "You might miss the delivery date.", approach: "Communicate early, send a rough cut for feedback, and protect autosave/backups to avoid losing work." },
-    ],
-  },
-];
+/* ── Tab 1: Marketing Mastery — deep curriculum lives in lib/mastery.ts ── */
 
 /* ── Tab 2: Books & Courses ────────────────────────────────── */
 const googleBook = (title: string, author: string) =>
@@ -267,6 +141,7 @@ function Mastery() {
           <ArrowLeft className="h-4 w-4" /> Back to all weeks
         </button>
 
+        {/* Week header: overview + goal + practice/watch/learn */}
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -276,7 +151,11 @@ function Mastery() {
                 <p className="text-sm text-muted-foreground">{w.summary}</p>
               </div>
             </div>
-            <p className="mt-4 leading-relaxed text-foreground/90">{w.overview}</p>
+            <p className="mt-4 whitespace-pre-line leading-relaxed text-foreground/90">{w.overview}</p>
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/10 p-3.5">
+              <Target className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <p className="text-sm leading-relaxed"><span className="font-semibold text-primary">Your goal this week: </span>{w.goal}</p>
+            </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <MasteryCell icon={Dumbbell} label="Practice" text={w.practice} />
               <MasteryCell icon={Eye} label="Watch" text={w.watch} />
@@ -285,10 +164,55 @@ function Mastery() {
           </CardContent>
         </Card>
 
+        {/* Deep-dive lessons */}
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">Deep-dive lessons</h3>
+          </div>
+          <div className="space-y-3">
+            {w.lessons.map((l, i) => (
+              <Card key={i}>
+                <CardContent className="p-5">
+                  <h4 className="font-semibold"><span className="text-primary">Lesson {i + 1} · </span>{l.heading}</h4>
+                  <p className="mt-2 text-sm leading-relaxed text-foreground/90">{l.body}</p>
+                  <ul className="mt-3 space-y-1.5">
+                    {l.points.map((p, pi) => (
+                      <li key={pi} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> {p}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* This week's drill */}
+        <Card className="border-primary/30">
+          <CardContent className="p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">This week&apos;s drill</h3>
+            </div>
+            <ol className="space-y-2.5">
+              {w.drill.map((d, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary/20 text-xs font-semibold text-primary">{i + 1}</span>
+                  <span className="leading-relaxed text-foreground/90">{d}</span>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+
+        {/* Scenarios — full anatomy */}
         <div>
           <div className="mb-3 flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold">5 real-world scenarios</h3>
+            <span className="text-sm text-muted-foreground">— the fix, why it works, the steps, and the trap</span>
           </div>
           <div className="space-y-3">
             {w.scenarios.map((s, i) => (
@@ -296,10 +220,25 @@ function Mastery() {
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/20 text-sm font-semibold text-primary">{i + 1}</span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h4 className="font-semibold">{s.title}</h4>
                       <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Situation: </span>{s.situation}</p>
-                      <p className="mt-1 text-sm text-foreground/90"><span className="font-medium text-primary">Do this: </span>{s.approach}</p>
+                      <p className="mt-1.5 text-sm text-foreground/90"><span className="font-medium text-primary">Do this: </span>{s.approach}</p>
+                      <p className="mt-1.5 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Why it works: </span>{s.why}</p>
+                      <div className="mt-3 rounded-lg bg-secondary/40 p-3">
+                        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step by step</div>
+                        <ol className="space-y-1.5">
+                          {s.steps.map((st, si) => (
+                            <li key={si} className="flex items-start gap-2 text-sm text-foreground/90">
+                              <span className="mt-0.5 shrink-0 font-semibold text-primary">{si + 1}.</span> {st}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                      <p className="mt-2.5 flex items-start gap-1.5 text-sm text-muted-foreground">
+                        <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                        <span><span className="font-medium text-rose-400">Avoid: </span>{s.pitfall}</span>
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -307,13 +246,30 @@ function Mastery() {
             ))}
           </div>
         </div>
+
+        {/* Key takeaways */}
+        <Card className="border-primary/30">
+          <CardContent className="p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Flame className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Key takeaways</h3>
+            </div>
+            <ul className="space-y-2">
+              {w.takeaways.map((t, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> {t}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 stagger">
-      <p className="text-sm text-muted-foreground">An 8-week loop for editors. Click any week to go deeper — overview, what to practice/watch/learn, and 5 real-world scenarios.</p>
+      <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
       {WEEKS.map((wk) => (
         <button key={wk.week} onClick={() => setSel(wk.week)} className="block w-full text-left">
           <Card className="lift">
@@ -322,6 +278,7 @@ function Mastery() {
               <div className="min-w-0 flex-1">
                 <h3 className="font-semibold">{wk.title}</h3>
                 <p className="truncate text-sm text-muted-foreground">{wk.summary}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground/80">{wk.lessons.length} lessons · drill · {wk.scenarios.length} scenarios · takeaways</p>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">Learn more <ArrowRight className="h-4 w-4" /></span>
             </CardContent>
