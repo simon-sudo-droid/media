@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen md:grid md:grid-cols-[260px_1fr]">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen border-r border-border bg-card/40 md:block">
+      <aside className="sticky top-0 hidden h-screen border-r border-border bg-gradient-to-b from-card/70 to-card/20 backdrop-blur-xl md:block">
         {SidebarInner}
       </aside>
 
