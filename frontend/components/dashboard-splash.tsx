@@ -45,7 +45,7 @@ export function DashboardSplash() {
   return (
     <div
       onClick={() => setLeaving(true)}
-      className={`fixed inset-0 z-[200] grid place-items-center overflow-hidden bg-[#08080f] transition-opacity duration-500 ${leaving ? "pointer-events-none opacity-0" : "opacity-100"}`}
+      className={`fixed inset-0 z-[200] grid place-items-center overflow-hidden bg-[#0a0c24] transition-opacity duration-500 ${leaving ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       {/* Intro video background */}
       {!videoFailed && (
@@ -66,7 +66,7 @@ export function DashboardSplash() {
       <div className="pointer-events-none absolute inset-0 glow" />
       {videoFailed && (
         <>
-          <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(60% 60% at 50% 50%, hsl(263 85% 55% / 0.18), transparent 70%)" }} />
+          <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(60% 60% at 50% 50%, hsl(224 80% 55% / 0.20), transparent 70%)" }} />
           <div className="pointer-events-none absolute left-1/2 top-1/2">
             {RINGS.map((s) => (
               <div key={s} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/15" style={{ width: s, height: s }} />
@@ -89,7 +89,7 @@ export function DashboardSplash() {
       {/* Center brand (over video or animation) */}
       <div className="animate-pop relative z-10 flex flex-col items-center">
         <div className="grid h-20 w-20 place-items-center rounded-3xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-500 shadow-lg shadow-primary/40">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-800 shadow-lg shadow-blue-900/50">
             <Sparkles className="h-7 w-7 text-white" />
           </div>
         </div>
@@ -98,7 +98,7 @@ export function DashboardSplash() {
         </h1>
         <p className="mt-2 text-sm text-white/70">Loading your editing studio…</p>
         <div className="mt-6 h-1 w-56 overflow-hidden rounded-full bg-white/15">
-          <div className="shimmer h-full w-full rounded-full bg-gradient-to-r from-primary to-fuchsia-500" />
+          <div className="shimmer h-full w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" />
         </div>
       </div>
     </div>

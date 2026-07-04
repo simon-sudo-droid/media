@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
       <div className="pointer-events-none absolute inset-0 glow" />
       <div className="relative z-10 w-full max-w-md">
         <Link href="/" className="mb-8 flex items-center justify-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-500">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-800">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold">EditMentor<span className="text-gradient"> AI</span></span>

@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const SidebarInner = (
     <div className="flex h-full flex-col">
       <Link href="/dashboard" className="flex items-center gap-2 px-5 py-5">
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-500">
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-800">
           <Sparkles className="h-5 w-5 text-white" />
         </div>
         <span className="font-bold">EditMentor<span className="text-gradient"> AI</span></span>

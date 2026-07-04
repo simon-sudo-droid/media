@@ -7,7 +7,7 @@ export function ToolHeader({
 }) {
   return (
     <div className="flex items-start gap-4">
-      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-fuchsia-500">
+      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-800">
         <Icon className="h-6 w-6 text-white" />
       </div>
       <div className="flex-1">

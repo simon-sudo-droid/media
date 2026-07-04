@@ -206,7 +206,7 @@ export default function BrollPage() {
                   )}
                   {(s.sources?.image_prompts?.length ?? 0) > 0 && (
                     <div className="mt-3">
-                      <div className="mb-1.5 text-xs font-semibold text-fuchsia-300">Midjourney / image prompts</div>
+                      <div className="mb-1.5 text-xs font-semibold text-amber-300">Midjourney / image prompts</div>
                       <div className="space-y-2">
                         {s.sources!.image_prompts!.map((p, pi) => <CopyPrompt key={pi} text={p} />)}
                       </div>

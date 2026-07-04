@@ -19,7 +19,7 @@ export function Progress({
     >
       <div
         className={cn(
-          "h-full rounded-full bg-gradient-to-r from-primary to-fuchsia-500 transition-all duration-500",
+          "h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500",
           indicatorClassName,
         )}
         style={{ width: `${Math.max(0, Math.min(100, value))}%` }}

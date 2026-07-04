@@ -28,7 +28,7 @@ export function AccountMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-primary to-fuchsia-500 text-sm font-bold text-white transition-transform hover:scale-105"
+        className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-800 text-sm font-bold text-white transition-transform hover:scale-105"
         aria-label="Account menu"
       >
         {initials(user.full_name, user.email)}
@@ -40,7 +40,7 @@ export function AccountMenu() {
           <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-in">
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-primary to-fuchsia-500 text-sm font-bold text-white">
+              <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-800 text-sm font-bold text-white">
                 {initials(user.full_name, user.email)}
               </div>
               <div className="min-w-0">

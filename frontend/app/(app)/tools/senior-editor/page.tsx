@@ -145,7 +145,7 @@ export default function SeniorEditorPage() {
                     <span className={tone(s.score)}>{s.score}%</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-fuchsia-500" style={{ width: `${s.score}%` }} />
+                    <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${s.score}%` }} />
                   </div>
                 </CardContent>
               </Card>

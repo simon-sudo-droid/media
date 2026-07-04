@@ -3,43 +3,43 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default for :root) */
+  /* Light theme (default for :root) — brand: navy ink, amber accent */
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 8%;
+    --foreground: 237 45% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 8%;
-    --primary: 263 80% 58%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 10% 12%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 42%;
-    --accent: 263 70% 94%;
-    --accent-foreground: 263 70% 28%;
-    --border: 240 6% 88%;
-    --input: 240 6% 88%;
-    --ring: 263 80% 58%;
+    --card-foreground: 237 45% 12%;
+    --primary: 33 93% 52%;
+    --primary-foreground: 238 50% 10%;
+    --secondary: 228 25% 95%;
+    --secondary-foreground: 237 40% 15%;
+    --muted: 228 25% 95%;
+    --muted-foreground: 232 12% 42%;
+    --accent: 224 60% 93%;
+    --accent-foreground: 224 60% 25%;
+    --border: 230 18% 87%;
+    --input: 230 18% 87%;
+    --ring: 33 93% 52%;
     --radius: 0.85rem;
   }
 
-  /* Dark theme (premium dark-first palette) — applied via .dark on <html> */
+  /* Dark theme (brand navy, like the logo) — applied via .dark on <html> */
   .dark {
-    --background: 240 10% 4%;
+    --background: 237 45% 7%;
     --foreground: 0 0% 98%;
-    --card: 240 8% 7%;
+    --card: 236 40% 10%;
     --card-foreground: 0 0% 98%;
-    --primary: 263 85% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 6% 14%;
+    --primary: 36 95% 58%;
+    --primary-foreground: 238 50% 10%;
+    --secondary: 234 30% 16%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 6% 14%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 263 70% 18%;
+    --muted: 234 30% 16%;
+    --muted-foreground: 228 14% 68%;
+    --accent: 224 55% 22%;
     --accent-foreground: 0 0% 98%;
-    --border: 240 6% 16%;
-    --input: 240 6% 16%;
-    --ring: 263 85% 65%;
+    --border: 233 25% 19%;
+    --input: 233 25% 19%;
+    --ring: 36 95% 58%;
     --radius: 0.85rem;
   }
 
@@ -57,8 +57,8 @@
 /* Ambient glow used across landing + dashboard */
 .glow {
   background:
-    radial-gradient(60% 50% at 50% 0%, hsl(263 85% 65% / 0.18), transparent 70%),
-    radial-gradient(40% 40% at 80% 20%, hsl(290 85% 60% / 0.12), transparent 70%);
+    radial-gradient(60% 50% at 50% 0%, hsl(224 80% 58% / 0.20), transparent 70%),
+    radial-gradient(40% 40% at 80% 20%, hsl(36 95% 60% / 0.10), transparent 70%);
 }
 
 .grid-bg {
@@ -70,7 +70,7 @@
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, hsl(263 85% 75%), hsl(290 85% 70%), hsl(210 90% 70%));
+  background: linear-gradient(90deg, hsl(42 97% 70%), hsl(30 95% 58%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -112,7 +112,7 @@
 
 /* Interactive card lift */
 .lift { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
-.lift:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -12px hsl(263 85% 50% / 0.45); }
+.lift:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -12px hsl(224 80% 40% / 0.5); }
 
 /* Shimmer text/skeleton */
 .shimmer {
@@ -135,9 +135,9 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(48% 38% at 12% -2%, hsl(263 85% 60% / 0.10), transparent 70%),
-    radial-gradient(42% 40% at 100% 4%, hsl(290 85% 60% / 0.08), transparent 70%),
-    radial-gradient(60% 50% at 50% 120%, hsl(263 85% 55% / 0.06), transparent 70%);
+    radial-gradient(48% 38% at 12% -2%, hsl(224 80% 55% / 0.10), transparent 70%),
+    radial-gradient(42% 40% at 100% 4%, hsl(36 95% 60% / 0.07), transparent 70%),
+    radial-gradient(60% 50% at 50% 120%, hsl(224 80% 50% / 0.07), transparent 70%);
 }
 body > * { position: relative; z-index: 1; }
 
@@ -157,13 +157,13 @@ body > * { position: relative; z-index: 1; }
    like the reference design. Sits behind hero content (z-0). */
 .horizon {
   background:
-    radial-gradient(closest-side at 50% 118%, hsl(200 95% 72% / 0.55), hsl(210 90% 62% / 0.28) 40%, transparent 72%),
-    radial-gradient(60% 90% at 50% 128%, hsl(263 90% 68% / 0.40), transparent 70%);
+    radial-gradient(closest-side at 50% 118%, hsl(38 95% 65% / 0.50), hsl(224 85% 58% / 0.28) 42%, transparent 72%),
+    radial-gradient(60% 90% at 50% 128%, hsl(224 80% 55% / 0.45), transparent 70%);
 }
 /* Bright thin arc that reads as the horizon edge. */
 .horizon-arc {
   background:
-    radial-gradient(closest-side at 50% 100%, transparent 78%, hsl(195 100% 85% / 0.9) 82%, transparent 86%);
+    radial-gradient(closest-side at 50% 100%, transparent 78%, hsl(42 100% 78% / 0.9) 82%, transparent 86%);
   filter: blur(0.5px);
 }
 /* Floating rounded icon tiles scattered around the hero. */
@@ -172,11 +172,11 @@ body > * { position: relative; z-index: 1; }
   place-items: center;
   border-radius: 1rem;
   border: 1px solid hsl(0 0% 100% / 0.08);
-  background: hsl(240 12% 10% / 0.55);
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 18px 40px -20px hsl(240 40% 2% / 0.8);
+  background: hsl(236 40% 12% / 0.55);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 18px 40px -20px hsl(237 45% 3% / 0.8);
   backdrop-filter: blur(8px);
 }
-:root .hero-tile { background: hsl(240 20% 98% / 0.7); border-color: hsl(240 10% 88%); }
+:root .hero-tile { background: hsl(228 25% 98% / 0.7); border-color: hsl(230 18% 88%); }
 
 /* Pill nav / CTA buttons with soft glow. */
 .pill { border-radius: 9999px; }

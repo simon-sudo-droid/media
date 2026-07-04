@@ -32,7 +32,7 @@ const LOGOS = ["Premiere Pro", "DaVinci Resolve", "Final Cut", "After Effects", 
 function Logo() {
   return (
     <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-fuchsia-500 shadow-lg shadow-primary/30">
+      <div className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-800 shadow-lg shadow-indigo-900/40">
         <Sparkles className="h-5 w-5 text-white" />
       </div>
       <span className="text-lg font-bold tracking-tight">
