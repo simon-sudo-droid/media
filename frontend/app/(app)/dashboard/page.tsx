@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DashboardSplash } from "@/components/dashboard-splash";
 
 type Dashboard = {
   user: { full_name: string; xp: number; level: string; streak_days: number };
@@ -39,9 +40,16 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName} 👋</h1>
-        <p className="text-muted-foreground">Here's your editing journey at a glance.</p>
+      <DashboardSplash />
+
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-6 animate-in">
+        <div className="pointer-events-none absolute inset-0 glow" />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName} 👋</h1>
+          <p className="text-muted-foreground">Here's your editing journey at a glance.</p>
+        </div>
       </div>
 
       {/* Stat cards */}
