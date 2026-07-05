@@ -32,7 +32,9 @@
       "Bash(render --version)",
       "Bash('/c/Users/Simon Chao/AppData/Local/RenderCLI/render.exe' services --output json --confirm)",
       "Bash(python -c 'import sys,json; *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

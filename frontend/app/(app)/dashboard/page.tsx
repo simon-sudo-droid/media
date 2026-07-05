@@ -18,7 +18,7 @@ import { Tilt } from "@/components/tilt";
 // WebGL/GSAP bundle loads only on the client, only for this page.
 const CinematicIntro = dynamic(() => import("@/components/cinematic/cinematic-intro"), {
   ssr: false,
-  loading: () => <div className="h-screen bg-[#050508]" />,
+  loading: () => <div className="h-screen bg-black" />,
 });
 
 type Dashboard = {

@@ -227,7 +227,7 @@ export default function CinematicIntro({ name }: { name: string }) {
   /* ── Static fallback (no WebGL, or reduced motion) ──────── */
   if (staticMode) {
     return (
-      <section className="no-reveal relative bg-[#050508] text-white" aria-label="EditMentor intro">
+      <section className="no-reveal relative bg-black text-white" aria-label="EditMentor intro">
         <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
           {supported ? (
             <div className="absolute inset-0">
@@ -265,7 +265,7 @@ export default function CinematicIntro({ name }: { name: string }) {
       ref={wrapRef}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
-      className="no-reveal cursor-none-all relative h-screen overflow-hidden bg-[#050508] text-white"
+      className="no-reveal cursor-none-all relative h-screen overflow-hidden bg-black text-white"
       aria-label="EditMentor cinematic intro"
     >
       {/* WebGL scene */}
@@ -273,9 +273,8 @@ export default function CinematicIntro({ name }: { name: string }) {
         <IntroScene mobile={mobile} animate frameloop={frameloop} onReady={() => setReady(true)} />
       </div>
 
-      {/* Atmospheric glow, upper-left volumetric feel */}
-      <div className="pointer-events-none absolute -left-32 -top-32 h-[65vh] w-[55vw] rounded-full bg-blue-500/15 blur-[130px]" />
-      <div className="pointer-events-none absolute bottom-0 left-1/2 h-[35vh] w-[70vw] -translate-x-1/2 rounded-full bg-indigo-600/15 blur-[120px]" />
+      {/* Whisper of atmosphere — the void stays essentially black */}
+      <div className="pointer-events-none absolute -left-32 -top-32 h-[65vh] w-[55vw] rounded-full bg-blue-500/[0.06] blur-[130px]" />
 
       {/* Semantic outline for screen readers (visual chapters mount dynamically) */}
       <div className="sr-only">
@@ -356,7 +355,7 @@ export default function CinematicIntro({ name }: { name: string }) {
 
       {/* Preloader */}
       {!loaderGone && (
-        <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#050508] transition-opacity duration-500 ${pct >= 100 ? "opacity-0" : "opacity-100"}`}>
+        <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-500 ${pct >= 100 ? "opacity-0" : "opacity-100"}`}>
           <div className="text-[10px] font-light uppercase tracking-[0.5em] text-white/50">EditMentor AI</div>
           <div className="display-font mt-3 text-5xl tabular-nums text-white">{Math.floor(pct)}%</div>
           <div className="mt-5 h-px w-40 overflow-hidden bg-white/15">
