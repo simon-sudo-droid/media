@@ -100,6 +100,17 @@
   55%  { opacity: 1; transform: scale(0.985); }
   100% { opacity: 1; transform: scale(1); }
 }
+/* Sidebar drawer */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes fade-in-plain {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-slide-in { animation: slide-in-left 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.animate-fade { animation: fade-in-plain 0.25s ease backwards; }
 
 /* fill-mode "backwards" (not "both"): the end state equals the natural
    state, and "both" would pin `transform` forever — blocking hover
@@ -169,6 +180,7 @@ main > div > *:nth-child(n+8), .seq > *:nth-child(n+8) { animation-delay: 0.95s;
 
 @media (prefers-reduced-motion: reduce) {
   .animate-in, .animate-pop, .animate-float, .stagger > *, .shimmer,
+  .animate-slide-in, .animate-fade,
   main > div > *, .seq > * { animation: none !important; }
   .lift:hover { transform: none; }
 }
