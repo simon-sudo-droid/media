@@ -156,7 +156,7 @@ export default function CinematicIntro({ name }: { name: string }) {
     const st = ScrollTrigger.create({
       trigger: wrapRef.current,
       start: "top top",
-      end: "+=520%",
+      end: "+=380%",
       pin: true,
       scrub: true,
       onUpdate(self) {

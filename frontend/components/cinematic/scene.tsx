@@ -96,9 +96,9 @@ function makeTimelineTexture(): THREE.CanvasTexture | null {
   return tex;
 }
 
-const BODY = "#191d26";
-const DARK = "#101318";
-const RING = "#2a3040";
+const BODY = "#2a3040";
+const DARK = "#1c222e";
+const RING = "#414b61";
 
 function CineCamera({ animate }: { animate: boolean }) {
   const group = useRef<THREE.Group>(null);
@@ -228,7 +228,7 @@ function CineCamera({ animate }: { animate: boolean }) {
       {[-0.16, 0.16].map((x) => (
         <mesh key={x} position={[x, -0.52, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.03, 0.03, 1.5, 16]} />
-          <meshStandardMaterial color="#3a4152" metalness={0.95} roughness={0.25} />
+          <meshStandardMaterial color="#5a6580" metalness={0.95} roughness={0.25} />
         </mesh>
       ))}
 
@@ -304,11 +304,13 @@ export default function IntroScene({
       <color attach="background" args={["#050508"]} />
       <fog attach="fog" args={["#050508", 6, 13]} />
 
-      {/* Volumetric-feel key light from upper-left; half the body falls to shadow */}
-      <hemisphereLight args={["#33406b", "#04050a", 0.6]} />
-      <spotLight position={[-4.5, 5, 3.5]} angle={0.55} penumbra={0.6} intensity={140} color="#dbe6ff" />
-      <pointLight position={[3, 1.2, -3]} intensity={26} color="#4c6fff" />
-      <pointLight position={[1.6, -1.2, 2.4]} intensity={7} color="#fbbf24" />
+      {/* Volumetric-feel key light from upper-left; softer shadow side */}
+      <ambientLight intensity={0.35} color="#8fa3d9" />
+      <hemisphereLight args={["#54689e", "#0a0d18", 1.1]} />
+      <spotLight position={[-4.5, 5, 3.5]} angle={0.55} penumbra={0.6} intensity={260} color="#e6eeff" />
+      <pointLight position={[3, 1.2, -3]} intensity={45} color="#5d7dff" />
+      <pointLight position={[1.6, -1.2, 2.4]} intensity={16} color="#fbbf24" />
+      <pointLight position={[0, 0.5, 4]} intensity={14} color="#c9d6ff" />
 
       <CineCamera animate={animate} />
       <Particles count={mobile ? 350 : 1200} animate={animate} />
@@ -317,14 +319,14 @@ export default function IntroScene({
         <EffectComposer multisampling={0}>
           <Bloom intensity={0.6} luminanceThreshold={0.3} mipmapBlur />
           <Noise opacity={0.045} />
-          <Vignette darkness={0.75} offset={0.25} />
+          <Vignette darkness={0.55} offset={0.22} />
         </EffectComposer>
       ) : (
         <EffectComposer multisampling={0}>
           <Bloom intensity={0.7} luminanceThreshold={0.28} mipmapBlur />
           <DepthOfField focusDistance={0.028} focalLength={0.06} bokehScale={2.2} />
           <Noise opacity={0.05} />
-          <Vignette darkness={0.75} offset={0.25} />
+          <Vignette darkness={0.55} offset={0.22} />
         </EffectComposer>
       )}
     </Canvas>
