@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
-import { blip } from "@/lib/sfx";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -97,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="truncate text-sm font-medium">{user.full_name || user.email}</div>
             <div className="truncate text-xs text-muted-foreground">{user.email}</div>
           </div>
-          <Button variant="ghost" size="icon" onMouseEnter={() => blip(8)} onClick={logout} title="Log out">
+          <Button variant="ghost" size="icon" onClick={logout} title="Log out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
@@ -121,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/60 px-5 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => { blip(0); setOpen(true); }} title="Open menu">
+            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Open menu">
               <Menu className="h-5 w-5" />
             </Button>
             <Link href="/dashboard" className="hidden items-center gap-2 sm:flex">
@@ -158,10 +157,9 @@ function ThemeSwitcher() {
   ];
   return (
     <div className="grid grid-cols-3 gap-1 rounded-lg bg-secondary/40 p-1">
-      {opts.map((o, i) => (
+      {opts.map((o) => (
         <button
           key={o.value}
-          onMouseEnter={() => blip(i + 3)}
           onClick={() => setTheme(o.value)}
           className={cn(
             "flex flex-col items-center gap-1 rounded-md py-1.5 text-[11px] font-medium transition-colors",
@@ -216,7 +214,7 @@ function NavLink({
   return (
     <Link
       href={href}
-      onMouseEnter={() => { blip(index); scramble(); }}
+      onMouseEnter={scramble}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-3 text-base font-bold tracking-tight transition-colors",
         active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
