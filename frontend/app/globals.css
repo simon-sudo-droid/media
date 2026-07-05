@@ -101,15 +101,18 @@
   100% { opacity: 1; transform: scale(1); }
 }
 
-.animate-in { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-pop { animation: pop-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+/* fill-mode "backwards" (not "both"): the end state equals the natural
+   state, and "both" would pin `transform` forever — blocking hover
+   tilt/parallax transforms applied via JS. */
+.animate-in { animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.animate-pop { animation: pop-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .animate-float { animation: float-y 4s ease-in-out infinite; }
 
 /* ── Sequential page reveal ───────────────────────────────── */
 /* When a page (or a .seq container) opens, its sections arrive
    top-to-bottom: heading first, then each following section.   */
 main > div > *:not(.stagger):not(.seq),
-.seq > *:not(.stagger) { animation: fade-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.seq > *:not(.stagger) { animation: fade-in-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 main > div > *:nth-child(1), .seq > *:nth-child(1) { animation-delay: 0.05s; }
 main > div > *:nth-child(2), .seq > *:nth-child(2) { animation-delay: 0.18s; }
 main > div > *:nth-child(3), .seq > *:nth-child(3) { animation-delay: 0.31s; }
@@ -121,7 +124,7 @@ main > div > *:nth-child(n+8), .seq > *:nth-child(n+8) { animation-delay: 0.95s;
 
 /* Stagger: cards arrive ONE BY ONE — big, then settle to place.
    Base delay lets the page heading/section land first. */
-.stagger > * { animation: zoom-settle 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > * { animation: zoom-settle 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .stagger > *:nth-child(1)  { animation-delay: 0.35s; }
 .stagger > *:nth-child(2)  { animation-delay: 0.47s; }
 .stagger > *:nth-child(3)  { animation-delay: 0.59s; }
@@ -218,3 +221,37 @@ body > * { position: relative; z-index: 1; }
 @keyframes drift-y { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 .animate-drift { animation: drift-y 6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .animate-drift { animation: none !important; } }
+
+/* ── Cursor-follow motion ─────────────────────────────────── */
+/* 3D tilt toward the pointer + an amber spotlight that tracks it. */
+.tilt {
+  position: relative;
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+.tilt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), hsl(36 95% 60% / 0.12), transparent 65%);
+}
+.tilt:hover::after { opacity: 1; }
+
+/* Elements inside the hero that drift with the pointer (--hx/--hy
+   are set by the hero's mousemove handler, each element scales them
+   by its own depth factor via inline transform). */
+.parallax {
+  transition: transform 0.3s cubic-bezier(0.2, 0.6, 0.3, 1);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce), (hover: none) {
+  .tilt { transform: none !important; transition: none; }
+  .tilt::after { display: none; }
+  .parallax { transform: none !important; transition: none; }
+}

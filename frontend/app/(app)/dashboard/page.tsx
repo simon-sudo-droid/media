@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Flame, Trophy, GraduationCap, ListChecks, Zap, ArrowRight, Activity, Target,
@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardSplash } from "@/components/dashboard-splash";
+import { Tilt } from "@/components/tilt";
 
 type Dashboard = {
   user: { full_name: string; xp: number; level: string; streak_days: number };
@@ -40,10 +41,27 @@ const HERO_TILES = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     api<Dashboard>("/dashboard").then(setData).catch(() => {});
   }, []);
+
+  // Feed the pointer position to the hero as CSS vars (-0.5..0.5);
+  // each .parallax child scales them by its own depth factor.
+  function heroMove(e: React.MouseEvent<HTMLDivElement>) {
+    const el = heroRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--hx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
+    el.style.setProperty("--hy", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
+  }
+  function heroLeave() {
+    const el = heroRef.current;
+    if (!el) return;
+    el.style.setProperty("--hx", "0");
+    el.style.setProperty("--hy", "0");
+  }
 
   const firstName = (user?.full_name || "Editor").split(" ")[0];
 
@@ -51,23 +69,37 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-6xl space-y-7">
       <DashboardSplash />
 
-      {/* ── Glowing-horizon hero ─────────────────────────────── */}
-      <div className="animate-in relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 px-6 py-14 text-center backdrop-blur-xl md:py-20">
+      {/* ── Glowing-horizon hero (parallax follows the cursor) ── */}
+      <div
+        ref={heroRef}
+        onMouseMove={heroMove}
+        onMouseLeave={heroLeave}
+        className="animate-in relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 px-6 py-14 text-center backdrop-blur-xl md:py-20"
+      >
         {/* Glowing horizon rising from the bottom */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-1/4">
           <div className="absolute inset-0 horizon" />
           <div className="absolute inset-x-0 bottom-0 h-3/4 horizon-arc" />
         </div>
-        {/* Floating editing-tool tiles */}
+        {/* Floating editing-tool tiles — each drifts with the cursor at its own depth */}
         <div className="pointer-events-none absolute inset-0 hidden md:block">
           {HERO_TILES.map((t, i) => (
-            <div key={i} className={`hero-tile animate-drift absolute h-12 w-12 ${t.x} ${t.y}`} style={{ animationDelay: t.d }}>
-              <t.icon className="h-5 w-5 text-primary/80" />
+            <div
+              key={i}
+              className={`parallax absolute ${t.x} ${t.y}`}
+              style={{ transform: `translate(calc(var(--hx, 0) * ${(i % 2 ? -1 : 1) * (18 + i * 8)}px), calc(var(--hy, 0) * ${20 + i * 7}px))` }}
+            >
+              <div className="hero-tile animate-drift h-12 w-12" style={{ animationDelay: t.d }}>
+                <t.icon className="h-5 w-5 text-primary/80" />
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="relative mx-auto flex max-w-2xl flex-col items-center">
+        <div
+          className="parallax relative mx-auto flex max-w-2xl flex-col items-center"
+          style={{ transform: "translate(calc(var(--hx, 0) * -14px), calc(var(--hy, 0) * -10px))" }}
+        >
           <Badge variant="outline" className="mb-5 gap-1.5 rounded-full border-primary/30 bg-background/40 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> {data?.user.level ?? user?.level ?? "Editor"} · {(data?.user.xp ?? user?.xp ?? 0).toLocaleString()} XP
           </Badge>
@@ -103,6 +135,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Level progress */}
+      <Tilt max={3} scale={1.005} className="rounded-xl">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -123,10 +156,12 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      </Tilt>
 
       <div className="grid gap-5 lg:grid-cols-2">
         {/* Daily challenge */}
-        <Card className="border-primary/30">
+        <Tilt max={6} className="rounded-xl">
+        <Card className="h-full border-primary/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Flame className="h-5 w-5 text-orange-400" /> Daily Challenge</CardTitle>
           </CardHeader>
@@ -152,9 +187,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        </Tilt>
 
         {/* Quick stats */}
-        <Card>
+        <Tilt max={6} className="rounded-xl">
+        <Card className="h-full">
           <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Your Activity</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <Row label="Quizzes taken" value={data?.quizzes_taken ?? 0} />
@@ -166,6 +203,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+        </Tilt>
       </div>
 
       {/* Recent activity */}
@@ -197,17 +235,19 @@ export default function DashboardPage() {
 
 function StatCard({ icon: Icon, label, value, accent }: { icon: any; label: string; value: string; accent: string }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`grid h-11 w-11 place-items-center rounded-lg bg-secondary ${accent}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="text-xl font-bold">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
+    <Tilt max={10} className="h-full rounded-xl">
+      <Card className="h-full">
+        <CardContent className="flex items-center gap-4 p-5">
+          <div className={`grid h-11 w-11 place-items-center rounded-lg bg-secondary ${accent}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <div className="text-xl font-bold">{value}</div>
+          </div>
+        </CardContent>
+      </Card>
+    </Tilt>
   );
 }
 
