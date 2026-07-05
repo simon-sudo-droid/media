@@ -9,8 +9,8 @@ import { introState } from "./state";
 
 /* ── Scroll choreography keyframes ─────────────────────────────
    cam = camera position, rotY = model heading, explode = 0..1
-   disassembly, mon = monitor screen brightness. Sampled by
-   progress with smoothstep easing between neighbours.          */
+   disassembly, mon = screen brightness. Sampled by progress with
+   smoothstep easing between neighbours.                         */
 type Key = { p: number; cam: [number, number, number]; rotY: number; explode: number; mon: number };
 const KEYS: Key[] = [
   { p: 0.0,  cam: [0.0, 0.15, 4.2],  rotY: -0.3, explode: 0,   mon: 0 },
@@ -19,17 +19,17 @@ const KEYS: Key[] = [
   { p: 0.38, cam: [-0.2, 0.15, 3.2], rotY: 3.2,  explode: 0,   mon: 0 },    // reassembled
   { p: 0.46, cam: [0.1, -0.25, 2.9], rotY: 3.9,  explode: 0,   mon: 0 },    // ch1 — low angle
   { p: 0.58, cam: [1.4, 0.3, 2.7],   rotY: 4.9,  explode: 0,   mon: 0.25 }, // ch2 — side profile
-  { p: 0.70, cam: [0.55, 0.65, 2.1], rotY: 6.1,  explode: 0,   mon: 1 },    // ch3 — monitor close-up
+  { p: 0.70, cam: [-1.05, 0.4, 2.3], rotY: 6.1,  explode: 0,   mon: 1 },    // ch3 — flip-screen close-up
   { p: 0.82, cam: [-0.9, 0.55, 2.9], rotY: 7.1,  explode: 0.3, mon: 0.5 },  // ch4 — rings drift
   { p: 1.0,  cam: [0.0, 0.3, 3.9],   rotY: 8.2,  explode: 0,   mon: 0.6 },  // beauty shot
 ];
 
 // Finale hotspot camera views (index matches the DOM hotspot list).
 export const HOTSPOT_VIEWS: { cam: [number, number, number]; rotY: number }[] = [
-  { cam: [0.1, -0.15, 2.7], rotY: 0.35 },  // CHALLENGES — front, low
-  { cam: [1.5, 0.35, 2.4],  rotY: 1.15 },  // LEARNING HUB — side
-  { cam: [0.55, 0.7, 2.0],  rotY: -0.4 },  // AI TOOLS — monitor
-  { cam: [-1.2, 0.65, 2.6], rotY: 2.2 },   // YOUR PROGRESS — top-left
+  { cam: [0.1, -0.15, 2.7], rotY: 0.35 },   // CHALLENGES — front, low
+  { cam: [1.5, 0.35, 2.4],  rotY: 1.15 },   // LEARNING HUB — side
+  { cam: [-1.35, 0.35, 2.2], rotY: 0.35 },  // AI TOOLS — flip screen
+  { cam: [-1.2, 0.65, 2.6], rotY: 2.2 },    // YOUR PROGRESS — top-left
 ];
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -62,7 +62,7 @@ function approachAngle(current: number, target: number, k: number) {
   return current + d * k;
 }
 
-/* ── Monitor screen: a tiny editing-timeline UI drawn to a canvas ── */
+/* ── Screen: a tiny editing-timeline UI drawn to a canvas ── */
 function makeTimelineTexture(): THREE.CanvasTexture | null {
   if (typeof document === "undefined") return null;
   const c = document.createElement("canvas");
@@ -96,18 +96,23 @@ function makeTimelineTexture(): THREE.CanvasTexture | null {
   return tex;
 }
 
-const BODY = "#2a3040";
-const DARK = "#1c222e";
-const RING = "#414b61";
+/* ── DSLR-style camera, matched to the reference image:
+   black body with leather grips, pentaprism hump + top dials,
+   big lens with a knurled focus ring and two RED accent rings,
+   red dot on the body, flip-out screen with the timeline UI.  */
+const BODY = "#23262d";
+const GRIP = "#15171c";
+const METAL = "#5a6580";
+const RED = "#d32330";
 
 function CineCamera({ animate }: { animate: boolean }) {
   const group = useRef<THREE.Group>(null);
   const lens = useRef<THREE.Group>(null);
-  const ringA = useRef<THREE.Mesh>(null);
-  const ringB = useRef<THREE.Mesh>(null);
-  const matte = useRef<THREE.Group>(null);
-  const monitor = useRef<THREE.Group>(null);
-  const handle = useRef<THREE.Group>(null);
+  const ringRedA = useRef<THREE.Mesh>(null);
+  const ringKnurl = useRef<THREE.Mesh>(null);
+  const ringRedB = useRef<THREE.Mesh>(null);
+  const top = useRef<THREE.Group>(null);
+  const screen = useRef<THREE.Group>(null);
   const sensorMat = useRef<THREE.MeshStandardMaterial>(null);
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const screenTex = useMemo(makeTimelineTexture, []);
@@ -132,18 +137,18 @@ function CineCamera({ animate }: { animate: boolean }) {
     // Explode / reassemble
     const e = hot ? 0 : k.explode;
     if (lens.current) {
-      lens.current.position.z = 0.5 + e * 0.85;
+      lens.current.position.z = 0.3 + e * 0.85;
       const breathe = animate ? 1 + Math.sin(t * 1.4) * 0.012 : 1; // lens breathing
       lens.current.scale.setScalar(breathe);
     }
-    if (ringA.current) { ringA.current.position.z = 0.18 + e * 0.4; ringA.current.rotation.z += dt * (0.25 + e * 2.5); }
-    if (ringB.current) { ringB.current.position.z = 0.42 + e * 0.62; ringB.current.rotation.z -= dt * (0.2 + e * 2); }
-    if (matte.current) matte.current.position.z = 1.08 + e * 1.35;
-    if (monitor.current) monitor.current.position.y = 0.72 + e * 0.45;
-    if (handle.current) handle.current.position.y = 0.62 + e * 0.3;
+    if (ringRedA.current) { ringRedA.current.position.z = 0.42 + e * 0.35; ringRedA.current.rotation.z += dt * (0.2 + e * 1.8); }
+    if (ringKnurl.current) { ringKnurl.current.position.z = 0.56 + e * 0.55; ringKnurl.current.rotation.z -= dt * (0.25 + e * 2.2); }
+    if (ringRedB.current) { ringRedB.current.position.z = 0.72 + e * 0.8; ringRedB.current.rotation.z += dt * (0.18 + e * 1.5); }
+    if (top.current) top.current.position.y = 0.55 + e * 0.4;
+    if (screen.current) screen.current.position.x = -0.9 - e * 0.35;
     if (sensorMat.current) sensorMat.current.emissiveIntensity = e * 4;
 
-    // Monitor brightness (full glow while the AI TOOLS hotspot is focused)
+    // Screen brightness (full glow while the AI TOOLS hotspot is focused)
     const mon = introState.focus === 2 ? 1 : k.mon;
     if (screenMat.current) screenMat.current.color.setScalar(0.15 + mon * 1.1);
 
@@ -157,93 +162,123 @@ function CineCamera({ animate }: { animate: boolean }) {
   return (
     <group ref={group}>
       {/* Body */}
-      <RoundedBox args={[1.1, 0.85, 0.95]} radius={0.06} smoothness={4}>
-        <meshStandardMaterial color={BODY} metalness={0.85} roughness={0.35} />
+      <RoundedBox args={[1.5, 0.95, 0.55]} radius={0.08} smoothness={4}>
+        <meshStandardMaterial color={BODY} metalness={0.6} roughness={0.45} />
       </RoundedBox>
-      {/* Side vents + record light */}
-      <mesh position={[-0.56, 0.1, 0]}>
-        <boxGeometry args={[0.02, 0.3, 0.5]} />
-        <meshStandardMaterial color={DARK} metalness={0.6} roughness={0.5} />
+      {/* Leather grip panels */}
+      <RoundedBox args={[0.4, 0.82, 0.58]} radius={0.06} smoothness={4} position={[-0.52, -0.02, 0]}>
+        <meshStandardMaterial color={GRIP} metalness={0.2} roughness={0.9} />
+      </RoundedBox>
+      <RoundedBox args={[0.34, 0.82, 0.57]} radius={0.06} smoothness={4} position={[0.56, -0.02, 0]}>
+        <meshStandardMaterial color={GRIP} metalness={0.2} roughness={0.9} />
+      </RoundedBox>
+      {/* Red dot logo + grip button */}
+      <mesh position={[-0.52, 0.14, 0.3]}>
+        <circleGeometry args={[0.035, 20]} />
+        <meshStandardMaterial color={RED} emissive={RED} emissiveIntensity={0.9} />
       </mesh>
-      <mesh position={[0.5, 0.32, 0.42]}>
-        <sphereGeometry args={[0.025, 12, 12]} />
-        <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={2.2} />
+      <mesh position={[-0.52, -0.06, 0.3]}>
+        <boxGeometry args={[0.1, 0.16, 0.03]} />
+        <meshStandardMaterial color="#0d0f13" metalness={0.4} roughness={0.7} />
       </mesh>
+      {/* Strap lugs */}
+      <mesh position={[-0.77, 0.22, 0]}>
+        <sphereGeometry args={[0.045, 14, 14]} />
+        <meshStandardMaterial color={METAL} metalness={0.95} roughness={0.25} />
+      </mesh>
+      <mesh position={[0.77, 0.22, 0]}>
+        <sphereGeometry args={[0.045, 14, 14]} />
+        <meshStandardMaterial color={METAL} metalness={0.95} roughness={0.25} />
+      </mesh>
+
+      {/* Top assembly: pentaprism hump, hot shoe, dials (lifts on explode) */}
+      <group ref={top} position={[0, 0.55, 0]}>
+        <mesh>
+          <boxGeometry args={[0.55, 0.28, 0.46]} />
+          <meshStandardMaterial color={BODY} metalness={0.6} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, -0.02, 0.24]} rotation={[0.3, 0, 0]}>
+          <boxGeometry args={[0.48, 0.24, 0.06]} />
+          <meshStandardMaterial color={BODY} metalness={0.6} roughness={0.4} />
+        </mesh>
+        <mesh position={[0, 0.16, 0]}>
+          <boxGeometry args={[0.22, 0.04, 0.24]} />
+          <meshStandardMaterial color={METAL} metalness={0.9} roughness={0.3} />
+        </mesh>
+        {/* Mode + shutter dials, shutter button */}
+        <mesh position={[-0.56, -0.02, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.09, 28]} />
+          <meshStandardMaterial color={GRIP} metalness={0.7} roughness={0.55} />
+        </mesh>
+        <mesh position={[0.5, -0.03, 0.06]}>
+          <cylinderGeometry args={[0.09, 0.09, 0.08, 28]} />
+          <meshStandardMaterial color={GRIP} metalness={0.7} roughness={0.55} />
+        </mesh>
+        <mesh position={[0.32, -0.02, 0.14]}>
+          <cylinderGeometry args={[0.035, 0.035, 0.06, 14]} />
+          <meshStandardMaterial color={METAL} metalness={0.9} roughness={0.3} />
+        </mesh>
+      </group>
+
       {/* Sensor (revealed + glowing when the lens separates) */}
-      <mesh position={[0, 0.02, 0.49]}>
-        <planeGeometry args={[0.3, 0.24]} />
+      <mesh position={[0, 0, 0.283]}>
+        <planeGeometry args={[0.42, 0.3]} />
         <meshStandardMaterial ref={sensorMat} color="#241a05" emissive="#fbbf24" emissiveIntensity={0} />
       </mesh>
-
-      {/* Lens assembly (barrel + glass) */}
-      <group ref={lens} position={[0, 0.02, 0.5]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.3]}>
-          <cylinderGeometry args={[0.26, 0.28, 0.65, 40]} />
-          <meshStandardMaterial color={DARK} metalness={0.9} roughness={0.3} />
-        </mesh>
-        <mesh position={[0, 0, 0.64]}>
-          <circleGeometry args={[0.21, 40]} />
-          <meshStandardMaterial color="#0b1e3a" metalness={1} roughness={0.05} emissive="#1d4ed8" emissiveIntensity={0.35} />
-        </mesh>
-      </group>
-      {/* Focus rings (drift apart on explode) */}
-      <mesh ref={ringA} position={[0, 0.02, 0.18]}>
-        <torusGeometry args={[0.295, 0.038, 14, 48]} />
-        <meshStandardMaterial color={RING} metalness={0.8} roughness={0.45} />
-      </mesh>
-      <mesh ref={ringB} position={[0, 0.02, 0.42]}>
-        <torusGeometry args={[0.29, 0.032, 14, 48]} />
-        <meshStandardMaterial color="#8a6a1f" metalness={0.85} roughness={0.35} emissive="#7a5a10" emissiveIntensity={0.25} />
+      {/* Lens mount ring (stays on the body) */}
+      <mesh position={[0, 0, 0.28]}>
+        <torusGeometry args={[0.345, 0.022, 14, 56]} />
+        <meshStandardMaterial color={METAL} metalness={0.95} roughness={0.25} />
       </mesh>
 
-      {/* Matte box */}
-      <group ref={matte} position={[0, 0.02, 1.08]}>
-        <mesh>
-          <boxGeometry args={[0.66, 0.5, 0.26]} />
-          <meshStandardMaterial color={DARK} metalness={0.7} roughness={0.5} />
+      {/* Lens assembly (barrel + front glass) */}
+      <group ref={lens} position={[0, 0, 0.3]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.32]}>
+          <cylinderGeometry args={[0.3, 0.32, 0.68, 48]} />
+          <meshStandardMaterial color={GRIP} metalness={0.8} roughness={0.35} />
         </mesh>
-        <mesh position={[0, 0.34, 0.02]} rotation={[-0.5, 0, 0]}>
-          <boxGeometry args={[0.66, 0.3, 0.02]} />
-          <meshStandardMaterial color={DARK} metalness={0.7} roughness={0.5} />
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.68]}>
+          <cylinderGeometry args={[0.31, 0.3, 0.07, 48]} />
+          <meshStandardMaterial color="#0d0f13" metalness={0.8} roughness={0.4} />
         </mesh>
-      </group>
-
-      {/* Top handle */}
-      <group ref={handle} position={[0, 0.62, 0]}>
-        <mesh position={[0, 0.12, 0]}>
-          <boxGeometry args={[0.55, 0.1, 0.16]} />
-          <meshStandardMaterial color={BODY} metalness={0.8} roughness={0.4} />
+        <mesh position={[0, 0, 0.717]}>
+          <circleGeometry args={[0.26, 48]} />
+          <meshStandardMaterial color="#0a1428" metalness={1} roughness={0.03} emissive="#1e3a8a" emissiveIntensity={0.5} />
         </mesh>
-        <mesh position={[-0.18, 0, 0]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.18, 16]} />
-          <meshStandardMaterial color={DARK} metalness={0.8} roughness={0.4} />
-        </mesh>
-        <mesh position={[0.18, 0, 0]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.18, 16]} />
-          <meshStandardMaterial color={DARK} metalness={0.8} roughness={0.4} />
+        <mesh position={[0, 0, 0.72]}>
+          <circleGeometry args={[0.13, 32]} />
+          <meshStandardMaterial color="#03050c" metalness={1} roughness={0.02} emissive="#312e81" emissiveIntensity={0.7} />
         </mesh>
       </group>
 
-      {/* Rig rails */}
-      {[-0.16, 0.16].map((x) => (
-        <mesh key={x} position={[x, -0.52, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.03, 0.03, 1.5, 16]} />
-          <meshStandardMaterial color="#5a6580" metalness={0.95} roughness={0.25} />
-        </mesh>
-      ))}
+      {/* Red accent ring — rear (like the reference image) */}
+      <mesh ref={ringRedA} position={[0, 0, 0.42]}>
+        <torusGeometry args={[0.34, 0.032, 16, 56]} />
+        <meshStandardMaterial color={RED} metalness={0.6} roughness={0.3} emissive={RED} emissiveIntensity={0.45} />
+      </mesh>
+      {/* Knurled focus ring */}
+      <mesh ref={ringKnurl} position={[0, 0, 0.56]}>
+        <torusGeometry args={[0.35, 0.055, 16, 64]} />
+        <meshStandardMaterial color="#2b2f38" metalness={0.75} roughness={0.55} />
+      </mesh>
+      {/* Red accent ring — front */}
+      <mesh ref={ringRedB} position={[0, 0, 0.72]}>
+        <torusGeometry args={[0.325, 0.026, 16, 56]} />
+        <meshStandardMaterial color={RED} metalness={0.6} roughness={0.3} emissive={RED} emissiveIntensity={0.45} />
+      </mesh>
 
-      {/* Mounted monitor with the timeline UI */}
-      <group ref={monitor} position={[0.42, 0.72, 0.05]} rotation={[-0.12, 0.35, 0]}>
-        <mesh position={[-0.2, -0.18, 0]} rotation={[0, 0, 0.7]}>
-          <cylinderGeometry args={[0.022, 0.022, 0.3, 12]} />
-          <meshStandardMaterial color="#3a4152" metalness={0.9} roughness={0.3} />
+      {/* Flip-out screen with the timeline UI */}
+      <group ref={screen} position={[-0.9, 0, 0.1]} rotation={[0, 0.55, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.3, 0, -0.06]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.14, 12]} />
+          <meshStandardMaterial color={METAL} metalness={0.9} roughness={0.3} />
         </mesh>
         <mesh>
-          <boxGeometry args={[0.62, 0.4, 0.05]} />
-          <meshStandardMaterial color={DARK} metalness={0.7} roughness={0.4} />
+          <boxGeometry args={[0.56, 0.4, 0.04]} />
+          <meshStandardMaterial color={GRIP} metalness={0.6} roughness={0.5} />
         </mesh>
-        <mesh position={[0, 0, 0.028]}>
-          <planeGeometry args={[0.56, 0.34]} />
+        <mesh position={[0, 0, 0.025]}>
+          <planeGeometry args={[0.5, 0.34]} />
           <meshBasicMaterial ref={screenMat} map={screenTex ?? undefined} toneMapped={false} />
         </mesh>
       </group>
