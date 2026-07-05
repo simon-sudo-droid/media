@@ -53,7 +53,10 @@ export default function DashboardPage() {
         <CinematicIntro name={firstName} />
       </div>
 
-      <div id="dashboard-content" className="mx-auto max-w-6xl scroll-mt-20 space-y-7 pt-8">
+      {/* Below the intro the black continues, fading out toward the bottom.
+          Cards keep their own solid surface color on top of it. */}
+      <div className="-mx-5 bg-gradient-to-b from-black via-black/50 to-transparent px-5 md:-mx-8 md:px-8">
+      <div id="dashboard-content" className="seq mx-auto max-w-6xl scroll-mt-20 space-y-7 py-8">
       <DashboardSplash />
 
       {/* Stat cards */}
@@ -159,6 +162,7 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+      </div>
       </div>
     </>
   );

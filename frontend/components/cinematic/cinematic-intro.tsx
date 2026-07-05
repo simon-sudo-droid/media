@@ -4,16 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
+import { useProgress } from "@react-three/drei";
+import IntroScene from "./scene";
 import { introState } from "./state";
-
-/* ── The hero visual is the user's OWN product animation footage,
-   converted to a 100-frame sequence (public/intro-seq) and scrubbed
-   by scroll — so the camera on screen is exactly the one in the
-   reference video, with its caption areas cropped out.            */
-const FRAME_COUNT = 100;
-const frameSrc = (i: number) => `/intro-seq/f${String(i + 1).padStart(3, "0")}.jpg`;
-const VIDEO_END_P = 0.86;   // footage completes here; the finale holds the beauty shot
-const LOAD_GATE = 30;       // % of frames buffered before the preloader lifts
 
 /* ── Content ─────────────────────────────────────────────── */
 const CHAPTERS = [
@@ -57,90 +50,6 @@ const HOTSPOTS = [
 ];
 
 const SCRAMBLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$+*!?";
-
-/* ── Scroll-scrubbed frame-sequence canvas ─────────────────── */
-function ScrubCanvas({ onPct }: { onPct: (pct: number) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const cv = canvasRef.current;
-    if (!cv) return;
-    const ctx = cv.getContext("2d");
-    if (!ctx) return;
-    let disposed = false;
-    const imgs: (HTMLImageElement | null)[] = new Array(FRAME_COUNT).fill(null);
-    let loaded = 0;
-    let lastIdx = -1;
-
-    const size = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
-      cv.width = Math.round(cv.clientWidth * dpr);
-      cv.height = Math.round(cv.clientHeight * dpr);
-      lastIdx = -1; // force redraw at the new size
-    };
-
-    const draw = (idx: number) => {
-      const im = imgs[idx];
-      if (!im) return;
-      const cw = cv.width;
-      const ch = cv.height;
-      const s = Math.max(cw / im.width, ch / im.height); // cover fit
-      const dw = im.width * s;
-      const dh = im.height * s;
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, cw, ch);
-      ctx.drawImage(im, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
-    };
-
-    const load = (i: number) =>
-      new Promise<void>((resolve) => {
-        const im = new Image();
-        im.onload = () => {
-          if (!disposed) {
-            imgs[i] = im;
-            loaded++;
-            onPct((loaded / FRAME_COUNT) * 100);
-          }
-          resolve();
-        };
-        im.onerror = () => resolve();
-        im.src = frameSrc(i);
-      });
-
-    size();
-    window.addEventListener("resize", size);
-
-    // Frame 0 first (instant hero), then the rest in small batches.
-    (async () => {
-      await load(0);
-      for (let s0 = 1; s0 < FRAME_COUNT && !disposed; s0 += 10) {
-        await Promise.all(
-          Array.from({ length: Math.min(10, FRAME_COUNT - s0) }, (_, j) => load(s0 + j)),
-        );
-      }
-    })();
-
-    // rAF follows scroll progress; falls back to the nearest loaded frame.
-    let raf = requestAnimationFrame(function tick() {
-      const p = Math.min(1, introState.progress / VIDEO_END_P);
-      let idx = Math.round(p * (FRAME_COUNT - 1));
-      while (idx > 0 && !imgs[idx]) idx--;
-      if (idx !== lastIdx && imgs[idx]) {
-        draw(idx);
-        lastIdx = idx;
-      }
-      raf = requestAnimationFrame(tick);
-    });
-
-    return () => {
-      disposed = true;
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", size);
-    };
-  }, [onPct]);
-
-  return <canvas ref={canvasRef} className="h-full w-full" />;
-}
 
 /* ── Scramble headline (decode-in on mount) ───────────────── */
 function ScrambleTitle({ text, className }: { text: string; className?: string }) {
@@ -190,36 +99,51 @@ function Chapter({ label, title, body }: { label: string; title: string; body: s
 
 /* ── Main component ───────────────────────────────────────── */
 export default function CinematicIntro({ name }: { name: string }) {
+  const [supported, setSupported] = useState(true);
   const [reduced, setReduced] = useState(false);
-  const [pct, setPct] = useState(0);
+  const [mobile, setMobile] = useState(false);
+  const [ready, setReady] = useState(false);
   const [loaderGone, setLoaderGone] = useState(false);
   const [chapter, setChapter] = useState(-1);
   const [heroVisible, setHeroVisible] = useState(true);
   const [finale, setFinale] = useState(false);
   const [focus, setFocus] = useState(-1);
+  const [frameloop, setFrameloop] = useState<"always" | "never" | "demand">("always");
   const wrapRef = useRef<HTMLElement | null>(null);
-  const parallaxRef = useRef<HTMLDivElement | null>(null);
   const cursorRef = useRef<HTMLDivElement | null>(null);
   const lenisRef = useRef<Lenis | null>(null);
 
+  // Real glTF loading progress (drei's global loading manager).
+  const { progress } = useProgress();
+  const pct = Math.min(100, Math.round(ready ? Math.max(progress, 60) : progress));
+
+  const staticMode = reduced || !supported;
   const headline1 = `WELCOME BACK, ${name.toUpperCase()}.`;
   const headline2 = "LET'S MAKE YOUR BEST EDIT.";
-  const shownPct = Math.min(100, Math.round((pct / LOAD_GATE) * 100));
 
+  // Environment detection
   useEffect(() => {
     setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    setMobile(window.matchMedia("(max-width: 768px), (hover: none)").matches);
+    try {
+      const c = document.createElement("canvas");
+      if (!c.getContext("webgl2") && !c.getContext("webgl")) setSupported(false);
+    } catch {
+      setSupported(false);
+    }
   }, []);
 
-  // Lift the preloader once enough frames are buffered.
+  // Lift the preloader when the model + canvas are in.
   useEffect(() => {
-    if (shownPct < 100 || loaderGone) return;
+    if (!supported) { setLoaderGone(true); return; }
+    if (pct < 100 || !ready || loaderGone) return;
     const t = setTimeout(() => setLoaderGone(true), 550);
     return () => clearTimeout(t);
-  }, [shownPct, loaderGone]);
+  }, [pct, ready, supported, loaderGone]);
 
   // Scroll story: Lenis smooth scroll + pinned scrub
   useEffect(() => {
-    if (reduced || !wrapRef.current) return;
+    if (staticMode || !wrapRef.current) return;
     gsap.registerPlugin(ScrollTrigger);
     const lenis = new Lenis();
     lenisRef.current = lenis;
@@ -240,7 +164,7 @@ export default function CinematicIntro({ name }: { name: string }) {
         setHeroVisible(p < 0.12);
         const fin = p > 0.885;
         setFinale(fin);
-        if (!fin) setFocus(-1);
+        if (!fin) { introState.focus = -1; setFocus(-1); }
         let idx = -1;
         for (let i = 0; i < CHAPTERS.length; i++) {
           if (p >= CHAPTERS[i].range[0] && p <= CHAPTERS[i].range[1]) { idx = i; break; }
@@ -249,24 +173,30 @@ export default function CinematicIntro({ name }: { name: string }) {
       },
     });
 
+    const io = new IntersectionObserver(
+      ([e]) => setFrameloop(e.isIntersecting ? "always" : "never"),
+      { threshold: 0 },
+    );
+    io.observe(wrapRef.current);
+
     return () => {
       st.kill();
+      io.disconnect();
       gsap.ticker.remove(tick);
       lenis.destroy();
       lenisRef.current = null;
       introState.progress = 0;
+      introState.focus = -1;
     };
-  }, [reduced]);
+  }, [staticMode]);
 
-  // Pointer: footage parallax + custom cursor
+  // Pointer: parallax vars + custom cursor
   function onMove(e: React.MouseEvent) {
     const el = wrapRef.current;
-    if (el && parallaxRef.current) {
+    if (el) {
       const r = el.getBoundingClientRect();
-      const px = ((e.clientX - r.left) / r.width - 0.5) * 2;
-      const py = ((e.clientY - r.top) / r.height - 0.5) * 2;
-      parallaxRef.current.style.transform =
-        `translate3d(${(-px * 12).toFixed(1)}px, ${(-py * 9).toFixed(1)}px, 0) scale(1.07)`;
+      introState.px = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      introState.py = ((e.clientY - r.top) / r.height - 0.5) * 2;
     }
     const cur = cursorRef.current;
     if (cur) {
@@ -275,8 +205,15 @@ export default function CinematicIntro({ name }: { name: string }) {
     }
   }
   function onLeave() {
-    if (parallaxRef.current) parallaxRef.current.style.transform = "translate3d(0,0,0) scale(1.07)";
+    introState.px = 0;
+    introState.py = 0;
     if (cursorRef.current) cursorRef.current.style.opacity = "0";
+  }
+
+  function pickHotspot(i: number) {
+    const next = focus === i ? -1 : i;
+    setFocus(next);
+    introState.focus = next;
   }
 
   function enterDashboard() {
@@ -286,13 +223,19 @@ export default function CinematicIntro({ name }: { name: string }) {
     else el.scrollIntoView({ behavior: "smooth" });
   }
 
-  /* ── Reduced-motion fallback: poster + stacked chapters ──── */
-  if (reduced) {
+  /* ── Static fallback (no WebGL, or reduced motion) ──────── */
+  if (staticMode) {
     return (
       <section className="no-reveal relative bg-black text-white" aria-label="EditMentor intro">
         <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={frameSrc(0)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+          {supported ? (
+            <div className="absolute inset-0">
+              <IntroScene mobile={mobile} animate={false} frameloop="demand" onReady={() => setReady(true)} />
+            </div>
+          ) : (
+            <div className="pointer-events-none absolute inset-0"
+              style={{ background: "radial-gradient(55% 45% at 50% 55%, rgba(70,85,140,0.3), transparent 70%)" }} />
+          )}
           <div className="relative">
             <h1 className="display-font text-5xl uppercase leading-[0.95] md:text-7xl">{headline1}<br />{headline2}</h1>
             <p className="mt-6 text-xs font-light uppercase tracking-[0.4em] text-white/50">An AI mentor for video editors</p>
@@ -324,18 +267,13 @@ export default function CinematicIntro({ name }: { name: string }) {
       className="no-reveal cursor-none-all relative h-screen overflow-hidden bg-black text-white"
       aria-label="EditMentor cinematic intro"
     >
-      {/* The reference footage, scrubbed by scroll (with cursor parallax) */}
-      <div
-        ref={parallaxRef}
-        className="absolute inset-0 will-change-transform"
-        style={{ transform: "translate3d(0,0,0) scale(1.07)", transition: "transform 0.3s cubic-bezier(0.2, 0.6, 0.3, 1)" }}
-      >
-        <ScrubCanvas onPct={setPct} />
+      {/* WebGL scene — the real Exakta VX model */}
+      <div className="absolute inset-0">
+        <IntroScene mobile={mobile} animate frameloop={frameloop} onReady={() => setReady(true)} />
       </div>
 
-      {/* Legibility gradients over the footage edges */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/70 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/70 to-transparent" />
+      {/* Whisper of atmosphere */}
+      <div className="pointer-events-none absolute -left-32 -top-32 h-[65vh] w-[55vw] rounded-full bg-blue-500/[0.06] blur-[130px]" />
 
       {/* Semantic outline for screen readers (visual chapters mount dynamically) */}
       <div className="sr-only">
@@ -365,12 +303,12 @@ export default function CinematicIntro({ name }: { name: string }) {
         <Chapter key={chapter} label={CHAPTERS[chapter].label} title={CHAPTERS[chapter].title} body={CHAPTERS[chapter].body} />
       )}
 
-      {/* SECTION 4 — finale hotspots over the beauty shot */}
+      {/* SECTION 4 — explorable finale */}
       <div className={`absolute inset-0 z-20 transition-opacity duration-700 ${finale ? "opacity-100" : "pointer-events-none opacity-0"}`}>
         {HOTSPOTS.map((h, i) => (
           <button
             key={h.label}
-            onClick={() => setFocus(focus === i ? -1 : i)}
+            onClick={() => pickHotspot(i)}
             style={h.pos}
             className={`group absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 outline-none ${finale ? "" : "pointer-events-none"}`}
           >
@@ -385,7 +323,7 @@ export default function CinematicIntro({ name }: { name: string }) {
         {focus >= 0 && (
           <div className="animate-in absolute bottom-24 left-6 z-30 max-w-sm rounded-xl border border-white/15 bg-black/60 p-5 backdrop-blur-xl md:left-16">
             <button
-              onClick={() => setFocus(-1)}
+              onClick={() => pickHotspot(focus)}
               aria-label="Close"
               className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full border border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
             >
@@ -414,13 +352,13 @@ export default function CinematicIntro({ name }: { name: string }) {
         </svg>
       </div>
 
-      {/* Preloader — real frame-buffering percentage */}
+      {/* Preloader — real model-loading percentage */}
       {!loaderGone && (
-        <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-500 ${shownPct >= 100 ? "opacity-0" : "opacity-100"}`}>
+        <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-500 ${pct >= 100 && ready ? "opacity-0" : "opacity-100"}`}>
           <div className="text-[10px] font-light uppercase tracking-[0.5em] text-white/50">EditMentor AI</div>
-          <div className="display-font mt-3 text-5xl tabular-nums text-white">{shownPct}%</div>
+          <div className="display-font mt-3 text-5xl tabular-nums text-white">{pct}%</div>
           <div className="mt-5 h-px w-40 overflow-hidden bg-white/15">
-            <div className="h-full bg-amber-400 transition-[width] duration-150" style={{ width: `${shownPct}%` }} />
+            <div className="h-full bg-amber-400 transition-[width] duration-150" style={{ width: `${pct}%` }} />
           </div>
         </div>
       )}

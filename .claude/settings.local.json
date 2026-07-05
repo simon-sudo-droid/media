@@ -34,7 +34,14 @@
       "Bash(python -c 'import sys,json; *)",
       "Bash(npm install *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://editmentor-web.onrender.com/intro-seq/f001.jpg)",
+      "Bash(echo 'frame f001: HTTP __CMDSUB_OUTPUT__')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://editmentor-web.onrender.com/intro-seq/f100.jpg)",
+      "Bash(echo 'frame f100: HTTP __TRACKED_VAR__')",
+      "PowerShell($sp = \"C:\\\\Users\\\\SIMONC~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Simon-Chao-Downloads-SImon-s-Project-2\\\\288e0cdf-551a-46b1-ab7e-0db6bc071336\\\\scratchpad\"; $out = \"C:\\\\Users\\\\Simon Chao\\\\Downloads\\\\SImon's Project 2\\\\frontend\\\\public\\\\models\"; New-Item -ItemType Directory -Force $out | Out-Null; & \"C:\\\\Program Files\\\\Blender Foundation\\\\Blender 5.1\\\\blender.exe\" -b --python \"$sp\\\\usdz2glb.py\" -- \"C:\\\\Users\\\\Simon Chao\\\\Downloads\\\\Vintage_Camera_Exakta_VX_1954.usdz\" \"$out\\\\camera.glb\" 2>&1 | Select-String -Pattern \"imported|exported|Error|Traceback\" | Select-Object -First 8; if \\(Test-Path \"$out\\\\camera.glb\"\\) { \"GLB size: $\\([math]::Round\\(\\(Get-Item \"$out\\\\camera.glb\"\\).Length / 1MB, 2\\)\\) MB\" } else { \"FAILED - no output\" })",
+      "Bash(npx --yes @gltf-transform/cli optimize \"public/models/camera.glb\" \"public/models/camera.glb\" --compress draco --texture-size 2048)",
+      "Bash(npx --yes @gltf-transform/cli optimize \"public/models/camera.glb\" \"public/models/camera.glb\" --compress draco --texture-compress webp --texture-size 1600)"
     ]
   }
 }
