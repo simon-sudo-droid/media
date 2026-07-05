@@ -112,6 +112,33 @@
 .animate-slide-in { animation: slide-in-left 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .animate-fade { animation: fade-in-plain 0.25s ease backwards; }
 
+/* ── Cinematic intro (scroll-driven 3D hero) ─────────────── */
+/* Opt out of the sequential page-reveal animation (needed on the
+   pinned WebGL section — ScrollTrigger pinning breaks under
+   animated transforms). */
+.no-reveal { animation: none !important; }
+
+/* Ultra-bold condensed display face for film-title headlines. */
+.display-font {
+  font-family: "Anton", Impact, "Arial Narrow Bold", "Franklin Gothic Medium", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.005em;
+}
+
+/* Per-letter headline reveal. */
+@keyframes letter-in {
+  from { opacity: 0; transform: translateY(0.35em); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+.letter-in { display: inline-block; white-space: pre; animation: letter-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+
+/* Hide the native cursor inside the intro (custom cursor takes over). */
+.cursor-none-all, .cursor-none-all * { cursor: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .letter-in { animation: none !important; }
+}
+
 /* fill-mode "backwards" (not "both"): the end state equals the natural
    state, and "both" would pin `transform` forever — blocking hover
    tilt/parallax transforms applied via JS. */

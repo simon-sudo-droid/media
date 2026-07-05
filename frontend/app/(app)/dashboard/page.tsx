@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Flame, Trophy, GraduationCap, ListChecks, Zap, ArrowRight, Activity, Target,
-  Wand2, Palette, Film, ScanSearch, Sparkles, Play,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -14,6 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DashboardSplash } from "@/components/dashboard-splash";
 import { Tilt } from "@/components/tilt";
+
+// WebGL/GSAP bundle loads only on the client, only for this page.
+const CinematicIntro = dynamic(() => import("@/components/cinematic/cinematic-intro"), {
+  ssr: false,
+  loading: () => <div className="h-screen bg-[#050508]" />,
+});
 
 type Dashboard = {
   user: { full_name: string; xp: number; level: string; streak_days: number };
@@ -30,14 +36,6 @@ type Dashboard = {
 
 const LEVELS = ["Beginner", "Intermediate", "Advanced", "Professional"];
 
-// Floating tiles that frame the hero.
-const HERO_TILES = [
-  { icon: Palette, x: "left-[7%]", y: "top-[24%]", d: "0s" },
-  { icon: Film, x: "left-[14%]", y: "top-[64%]", d: "0.9s" },
-  { icon: ScanSearch, x: "right-[8%]", y: "top-[26%]", d: "0.5s" },
-  { icon: Play, x: "right-[15%]", y: "top-[66%]", d: "1.3s" },
-];
-
 export default function DashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
@@ -49,63 +47,14 @@ export default function DashboardPage() {
   const firstName = (user?.full_name || "Editor").split(" ")[0];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7">
-      <DashboardSplash />
-
-      {/* ── Glowing-horizon hero (parallax follows the cursor) ── */}
-      <div
-        data-parallax-zone
-        className="animate-in relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 px-6 py-14 text-center backdrop-blur-xl md:py-20"
-      >
-        {/* Glowing horizon rising from the bottom */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-1/4">
-          <div className="absolute inset-0 horizon" />
-          <div className="absolute inset-x-0 bottom-0 h-3/4 horizon-arc" />
-        </div>
-        {/* Floating editing-tool tiles — each drifts with the cursor at its own depth */}
-        <div className="pointer-events-none absolute inset-0 hidden md:block">
-          {HERO_TILES.map((t, i) => (
-            <div
-              key={i}
-              className={`parallax absolute ${t.x} ${t.y}`}
-              style={{ transform: `translate(calc(var(--hx, 0) * ${(i % 2 ? -1 : 1) * (18 + i * 8)}px), calc(var(--hy, 0) * ${20 + i * 7}px))` }}
-            >
-              <div className="hero-tile animate-drift h-12 w-12" style={{ animationDelay: t.d }}>
-                <t.icon className="h-5 w-5 text-primary/80" />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div
-          className="parallax relative mx-auto flex max-w-2xl flex-col items-center"
-          style={{ transform: "translate(calc(var(--hx, 0) * -14px), calc(var(--hy, 0) * -10px))" }}
-        >
-          <Badge variant="outline" className="mb-5 gap-1.5 rounded-full border-primary/30 bg-background/40 backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-primary" /> {data?.user.level ?? user?.level ?? "Editor"} · {(data?.user.xp ?? user?.xp ?? 0).toLocaleString()} XP
-          </Badge>
-          <h1 className="text-4xl font-bold leading-[1.05] tracking-tight md:text-6xl">
-            Welcome back, {firstName}.
-            <br />
-            <span className="text-gradient">Let's make your best edit.</span>
-          </h1>
-          <p className="mt-5 max-w-xl text-muted-foreground">
-            Practice today's challenge, sharpen a skill in the Learning Hub, or let the AI tools plan your next cut.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/challenges">
-              <Button size="lg" className="pill w-full bg-white text-black shadow-xl shadow-black/20 hover:bg-white/90 sm:w-auto">
-                <Flame className="h-4 w-4" /> Today's challenge
-              </Button>
-            </Link>
-            <Link href="/tools">
-              <Button variant="outline" size="lg" className="pill w-full border-white/20 bg-white/5 backdrop-blur hover:bg-white/10 sm:w-auto">
-                <Wand2 className="h-4 w-4" /> Open AI tools
-              </Button>
-            </Link>
-          </div>
-        </div>
+    <>
+      {/* ── Cinematic scroll-driven 3D intro (replaces the hero only) ── */}
+      <div className="no-reveal -mx-5 -mt-5 md:-mx-8 md:-mt-8">
+        <CinematicIntro name={firstName} />
       </div>
+
+      <div id="dashboard-content" className="mx-auto max-w-6xl scroll-mt-20 space-y-7 pt-8">
+      <DashboardSplash />
 
       {/* Stat cards */}
       <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -210,7 +159,8 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }
 
