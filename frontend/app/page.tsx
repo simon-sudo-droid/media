@@ -60,23 +60,32 @@ export default function LandingPage() {
       </header>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative z-10 overflow-hidden">
+      <section data-parallax-zone className="relative z-10 overflow-hidden">
         {/* Glowing horizon */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-24">
           <div className="absolute inset-0 horizon" />
           <div className="absolute inset-x-0 bottom-0 h-[70%] horizon-arc" />
         </div>
 
-        {/* Floating tiles */}
+        {/* Floating tiles — each drifts with the cursor at its own depth */}
         <div className="pointer-events-none absolute inset-0 hidden md:block">
           {TILES.map((t, i) => (
-            <div key={i} className={`hero-tile animate-drift absolute h-14 w-14 ${t.x} ${t.y}`} style={{ animationDelay: t.d }}>
-              <t.icon className="h-6 w-6 text-primary/80" />
+            <div
+              key={i}
+              className={`parallax absolute ${t.x} ${t.y}`}
+              style={{ transform: `translate(calc(var(--hx, 0) * ${(i % 2 ? -1 : 1) * (20 + i * 8)}px), calc(var(--hy, 0) * ${22 + i * 7}px))` }}
+            >
+              <div className="hero-tile animate-drift h-14 w-14" style={{ animationDelay: t.d }}>
+                <t.icon className="h-6 w-6 text-primary/80" />
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="container relative flex flex-col items-center py-24 text-center md:py-32">
+        <div
+          className="parallax container relative flex flex-col items-center py-24 text-center md:py-32"
+          style={{ transform: "translate(calc(var(--hx, 0) * -14px), calc(var(--hy, 0) * -10px))" }}
+        >
           <Badge variant="outline" className="mb-6 gap-1.5 rounded-full border-primary/30 bg-background/40 py-1 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-primary" /> AI mentor for video editors
           </Badge>

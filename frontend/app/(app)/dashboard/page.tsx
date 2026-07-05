@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Flame, Trophy, GraduationCap, ListChecks, Zap, ArrowRight, Activity, Target,
@@ -41,27 +41,10 @@ const HERO_TILES = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
-  const heroRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     api<Dashboard>("/dashboard").then(setData).catch(() => {});
   }, []);
-
-  // Feed the pointer position to the hero as CSS vars (-0.5..0.5);
-  // each .parallax child scales them by its own depth factor.
-  function heroMove(e: React.MouseEvent<HTMLDivElement>) {
-    const el = heroRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty("--hx", ((e.clientX - r.left) / r.width - 0.5).toFixed(3));
-    el.style.setProperty("--hy", ((e.clientY - r.top) / r.height - 0.5).toFixed(3));
-  }
-  function heroLeave() {
-    const el = heroRef.current;
-    if (!el) return;
-    el.style.setProperty("--hx", "0");
-    el.style.setProperty("--hy", "0");
-  }
 
   const firstName = (user?.full_name || "Editor").split(" ")[0];
 
@@ -71,9 +54,7 @@ export default function DashboardPage() {
 
       {/* ── Glowing-horizon hero (parallax follows the cursor) ── */}
       <div
-        ref={heroRef}
-        onMouseMove={heroMove}
-        onMouseLeave={heroLeave}
+        data-parallax-zone
         className="animate-in relative overflow-hidden rounded-3xl border border-white/10 bg-card/40 px-6 py-14 text-center backdrop-blur-xl md:py-20"
       >
         {/* Glowing horizon rising from the bottom */}

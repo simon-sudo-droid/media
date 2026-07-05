@@ -32,7 +32,7 @@ export default function ReferenceChannelsPage() {
       <div className="grid gap-5 md:grid-cols-2">
         {channels.map((c) => (
           <Link key={c.id} href={`/reference-channels/${c.slug}`} className="group">
-            <Card className="h-full overflow-hidden transition-colors group-hover:border-primary/40">
+            <Card className="lift h-full overflow-hidden transition-colors group-hover:border-primary/40">
               <div className={`h-1.5 w-full bg-gradient-to-r ${ACCENT[c.accent] || ACCENT.violet}`} />
               <CardContent className="space-y-4 p-6">
                 <div className="flex items-start gap-3">
