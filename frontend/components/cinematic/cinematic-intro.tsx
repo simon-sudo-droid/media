@@ -69,24 +69,46 @@ function ScrambleTitle({ text, className }: { text: string; className?: string }
     }, 24);
     return () => clearInterval(iv);
   }, [text]);
+  // Each word is a nowrap box so letters never split mid-word; only the
+  // spaces between words are line-break opportunities.
   return (
     <span className={className}>
-      {display.split("").map((ch, i) => (
-        <span key={i} data-shatter className="inline-block whitespace-pre">{ch}</span>
+      {display.split(" ").map((word, wi, arr) => (
+        <span key={wi}>
+          <span className="inline-block whitespace-nowrap align-top">
+            {word.split("").map((ch, ci) => (
+              <span key={ci} data-shatter className="inline-block">{ch}</span>
+            ))}
+          </span>
+          {wi < arr.length - 1 ? " " : ""}
+        </span>
       ))}
     </span>
   );
 }
 
-/* ── Per-letter reveal; each letter can shatter under the cursor ── */
+/* ── Per-letter reveal; each letter can shatter under the cursor.
+   Words are kept whole (nowrap) so QUALITY never breaks as QUAL-ITY. */
 function Letters({ text, delay = 0 }: { text: string; delay?: number }) {
+  const words = text.split(" ");
+  let idx = 0;
   return (
-    <span aria-hidden className="inline-block">
-      {text.split("").map((ch, i) => (
-        <span key={i} data-shatter className="letter-in" style={{ animationDelay: `${delay + i * 0.035}s` }}>
-          {ch === " " ? " " : ch}
-        </span>
-      ))}
+    <span aria-hidden>
+      {words.map((word, wi) => {
+        const el = (
+          <span key={`w${wi}`} className="inline-block whitespace-nowrap align-top">
+            {word.split("").map((ch, ci) => {
+              const d = delay + idx * 0.035;
+              idx++;
+              return (
+                <span key={ci} data-shatter className="letter-in inline-block" style={{ animationDelay: `${d}s` }}>{ch}</span>
+              );
+            })}
+          </span>
+        );
+        idx++; // count the space
+        return wi < words.length - 1 ? <span key={wi}>{el}{" "}</span> : <span key={wi}>{el}</span>;
+      })}
     </span>
   );
 }
