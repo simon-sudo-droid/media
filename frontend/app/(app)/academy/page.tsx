@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChallengeCard, type Challenge } from "@/components/challenge-card";
 import { PageHero } from "@/components/page-hero";
-import { CursorTrail } from "@/components/cursor-trail";
 import { WEEKS } from "@/lib/mastery";
 
 const prefersReduced = () =>
@@ -173,11 +172,9 @@ function Mastery() {
     flipFrom(detailRef.current, originRect.current);
   }, [w]);
 
-  // Close: collapse the panel back into the card, then show the grid.
+  // Back: return straight to the W-cards grid (which re-enters normally).
   function close() {
-    const el = detailRef.current;
-    if (!el || !originRect.current || prefersReduced()) { setSel(null); return; }
-    flipFrom(el, originRect.current, true).onfinish = () => setSel(null);
+    setSel(null);
   }
 
   if (w) {
@@ -315,7 +312,6 @@ function Mastery() {
 
   return (
     <div ref={listRef} className="relative space-y-4">
-      <CursorTrail containerRef={listRef} />
       <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Hover the weeks to trace the path; click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
       <div className="space-y-4 stagger">
         {WEEKS.map((wk) => (
@@ -350,7 +346,6 @@ function Library_() {
   const ref = useRef<HTMLDivElement>(null);
   return (
     <div ref={ref} className="relative space-y-8">
-      <CursorTrail containerRef={ref} />
       <div className="space-y-5">
         {BOOK_THEMES.map((group) => (
           <section key={group.theme} className="space-y-3">
@@ -442,7 +437,6 @@ function Glossary() {
 
   return (
     <div ref={rootRef} className="relative space-y-5">
-      <CursorTrail containerRef={rootRef} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -526,7 +520,6 @@ function Practice() {
 
   return (
     <div ref={rootRef} className="relative space-y-8">
-      <CursorTrail containerRef={rootRef} />
       {/* Courses */}
       {grouped.length > 0 && (
         <section className="space-y-4">
