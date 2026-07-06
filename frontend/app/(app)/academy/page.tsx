@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import * as Icons from "lucide-react";
 import {
@@ -122,22 +122,87 @@ export default function LearningHubPage() {
           </button>
         ))}
       </div>
-      {tab === "mastery" && <Mastery />}
-      {tab === "library" && <Library_ />}
-      {tab === "glossary" && <Glossary />}
-      {tab === "practice" && <Practice />}
+      {tab === "mastery" && <TabPanel key="mastery"><Mastery /></TabPanel>}
+      {tab === "library" && <TabPanel key="library"><Library_ /></TabPanel>}
+      {tab === "glossary" && <TabPanel key="glossary"><Glossary /></TabPanel>}
+      {tab === "practice" && <TabPanel key="practice"><Practice /></TabPanel>}
+    </div>
+  );
+}
+
+/* ── The big curved "rope" line — draws itself in as it scrolls into
+   view, sweeping down from the section through the cards (Lusion-style). */
+function CurvedLine() {
+  const ref = useRef<SVGPathElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.classList.add("on"); return; }
+    const svg = el.ownerSVGElement;
+    if (!svg) return;
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { el.classList.add("on"); io.disconnect(); } },
+      { threshold: 0.05 },
+    );
+    io.observe(svg);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute -left-20 -top-24 z-0 hidden h-[calc(100%+7rem)] w-[46%] overflow-visible md:block"
+      viewBox="0 0 260 1000"
+      fill="none"
+      preserveAspectRatio="none"
+      style={{ filter: "drop-shadow(0 0 16px hsl(224 90% 62% / 0.45))" }}
+    >
+      <path
+        ref={ref}
+        className="draw-line"
+        pathLength={1}
+        vectorEffect="non-scaling-stroke"
+        strokeWidth={4}
+        strokeLinecap="round"
+        stroke="url(#lh-rope)"
+        d="M 205 -40 C 30 120, 250 300, 70 470 S 250 760, 95 1030"
+      />
+      <defs>
+        <linearGradient id="lh-rope" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7d96ff" stopOpacity="0.95" />
+          <stop offset="0.55" stopColor="#4c6bff" stopOpacity="0.8" />
+          <stop offset="1" stopColor="#4c6bff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* Wraps each tab: draws the rope behind, pops the content in on switch. */
+function TabPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <CurvedLine />
+      <div className="pop-open relative z-10">{children}</div>
     </div>
   );
 }
 
 function Mastery() {
   const [sel, setSel] = useState<number | null>(null);
+  const [closing, setClosing] = useState(false);
   const w = WEEKS.find((x) => x.week === sel);
+
+  // Return to the grid: play the collapse, then swap back to the list.
+  function close() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setSel(null); return; }
+    setClosing(true);
+    setTimeout(() => { setSel(null); setClosing(false); }, 270);
+  }
 
   if (w) {
     return (
-      <div className="seq space-y-5">
-        <button onClick={() => setSel(null)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <div className={`space-y-5 ${closing ? "pop-close" : "pop-open"}`}>
+        <button onClick={close} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to all weeks
         </button>
 

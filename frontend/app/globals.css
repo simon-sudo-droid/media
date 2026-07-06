@@ -112,6 +112,28 @@
 .animate-slide-in { animation: slide-in-left 0.28s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 .animate-fade { animation: fade-in-plain 0.25s ease backwards; }
 
+/* ── Scale-up "pop open" for drill-in panels (Lusion-style) ── */
+@keyframes pop-open {
+  0%   { opacity: 0; transform: scale(0.9) translateY(26px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes pop-close {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scale(0.93) translateY(12px); }
+}
+.pop-open  { animation: pop-open 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: center top; }
+.pop-close { animation: pop-close 0.28s cubic-bezier(0.4, 0, 1, 1) both; transform-origin: center top; }
+
+/* ── Curved connector "rope" that draws in on scroll ── */
+@keyframes draw-line { to { stroke-dashoffset: 0; } }
+.draw-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.draw-line.on { animation: draw-line 1.7s cubic-bezier(0.45, 0, 0.15, 1) forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-open, .pop-close { animation: none !important; }
+  .draw-line { stroke-dashoffset: 0 !important; animation: none !important; }
+}
+
 /* ── Cinematic intro (scroll-driven 3D hero) ─────────────── */
 /* Opt out of the sequential page-reveal animation (needed on the
    pinned WebGL section — ScrollTrigger pinning breaks under
