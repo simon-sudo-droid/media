@@ -37,12 +37,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  // Keep the sidebar open across navigation on desktop; only auto-close
-  // the overlay on mobile (where a docked panel would cover the screen).
+  // Route-aware sidebar: hidden on the Dashboard (the cinematic page),
+  // and available/open on the working sections (Learning Hub, AI Tools,
+  // Reference Channels, Approved Videos, Checklists, Tracker, IT Issues,
+  // Guide & Help, Admin…). Mobile keeps it closed by default (overlay).
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-      setOpen(false);
-    }
+    if (typeof window === "undefined") return;
+    const isDashboard = pathname === "/dashboard";
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    setOpen(!isDashboard && !isMobile);
   }, [pathname]);
 
   // Esc closes the drawer.
