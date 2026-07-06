@@ -69,15 +69,21 @@ function ScrambleTitle({ text, className }: { text: string; className?: string }
     }, 24);
     return () => clearInterval(iv);
   }, [text]);
-  return <span className={className}>{display}</span>;
+  return (
+    <span className={className}>
+      {display.split("").map((ch, i) => (
+        <span key={i} data-shatter className="inline-block whitespace-pre">{ch}</span>
+      ))}
+    </span>
+  );
 }
 
-/* ── Hero headline with per-letter reveal ─────────────────── */
+/* ── Per-letter reveal; each letter can shatter under the cursor ── */
 function Letters({ text, delay = 0 }: { text: string; delay?: number }) {
   return (
     <span aria-hidden className="inline-block">
       {text.split("").map((ch, i) => (
-        <span key={i} className="letter-in" style={{ animationDelay: `${delay + i * 0.035}s` }}>
+        <span key={i} data-shatter className="letter-in" style={{ animationDelay: `${delay + i * 0.035}s` }}>
           {ch === " " ? " " : ch}
         </span>
       ))}
@@ -88,7 +94,7 @@ function Letters({ text, delay = 0 }: { text: string; delay?: number }) {
 function Chapter({ label, title, body }: { label: string; title: string; body: string }) {
   return (
     <div className="animate-in pointer-events-none absolute left-6 top-1/2 z-20 max-w-md -translate-y-1/2 md:left-16">
-      <div className="text-[11px] font-light uppercase tracking-[0.4em] text-white/50">{label}</div>
+      <div className="text-[11px] font-light uppercase tracking-[0.4em] text-white/50"><Letters text={label} /></div>
       <h2 className="display-font mt-4 text-4xl uppercase leading-[0.95] text-white md:text-6xl">
         <ScrambleTitle text={title} />
       </h2>
@@ -190,7 +196,85 @@ export default function CinematicIntro({ name }: { name: string }) {
     };
   }, [staticMode]);
 
-  // Pointer: parallax vars + custom cursor
+  /* ── Letter shatter: caps letters near the cursor burst into
+     specks and fly out, then reassemble (reference effect). ──── */
+  const shatterBusy = useRef(new WeakSet<HTMLElement>());
+  const shatterEv = useRef<{ x: number; y: number } | null>(null);
+  const shatterRaf = useRef(0);
+
+  useEffect(() => () => { if (shatterRaf.current) cancelAnimationFrame(shatterRaf.current); }, []);
+
+  function spawnSpecks(x: number, y: number) {
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement("span");
+      const size = 2 + Math.random() * 3;
+      s.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-radius:9999px;background:#fff;z-index:55;pointer-events:none;`;
+      document.body.appendChild(s);
+      const a = Math.random() * Math.PI * 2;
+      const dist = 25 + Math.random() * 55;
+      const anim = s.animate(
+        [
+          { opacity: 1, transform: "translate(0,0) scale(1)" },
+          { opacity: 0, transform: `translate(${(Math.cos(a) * dist).toFixed(0)}px, ${(Math.sin(a) * dist - 20).toFixed(0)}px) scale(0.3)` },
+        ],
+        { duration: 500 + Math.random() * 300, easing: "cubic-bezier(0.2, 0.6, 0.4, 1)" },
+      );
+      anim.onfinish = () => s.remove();
+    }
+  }
+
+  function shatterNear(x: number, y: number) {
+    const host = wrapRef.current;
+    if (!host) return;
+    const letters = host.querySelectorAll<HTMLElement>("[data-shatter]");
+    letters.forEach((el) => {
+      if (shatterBusy.current.has(el)) return;
+      const r = el.getBoundingClientRect();
+      if (!r.width) return;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      if (Math.hypot(cx - x, cy - y) > 70) return;
+      if (el.closest("[data-shatter-off]")) return; // hidden layer (faded hero)
+      shatterBusy.current.add(el);
+      // fly away from the cursor
+      const dx = cx - x || (Math.random() - 0.5) * 10;
+      const dy = cy - y || (Math.random() - 0.5) * 10;
+      const mag = Math.hypot(dx, dy) || 1;
+      const fx = (dx / mag) * (30 + Math.random() * 45);
+      const fy = (dy / mag) * (30 + Math.random() * 45) - 18;
+      el.animate(
+        [
+          { opacity: 1, transform: "translate(0,0) rotate(0deg) scale(1)" },
+          { opacity: 0, transform: `translate(${fx.toFixed(0)}px, ${fy.toFixed(0)}px) rotate(${((Math.random() - 0.5) * 90).toFixed(0)}deg) scale(0.4)` },
+        ],
+        { duration: 260, easing: "cubic-bezier(0.3, 0, 0.7, 1)", fill: "forwards" },
+      );
+      spawnSpecks(cx, cy);
+      // reassemble
+      setTimeout(() => {
+        el.animate(
+          [
+            { opacity: 0, transform: "translate(0, 14px) scale(0.8)" },
+            { opacity: 1, transform: "translate(0,0) scale(1)" },
+          ],
+          { duration: 380, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
+        );
+        setTimeout(() => shatterBusy.current.delete(el), 400);
+      }, 750);
+    });
+  }
+
+  function queueShatter(x: number, y: number) {
+    shatterEv.current = { x, y };
+    if (shatterRaf.current) return;
+    shatterRaf.current = requestAnimationFrame(() => {
+      shatterRaf.current = 0;
+      const ev = shatterEv.current;
+      if (ev) shatterNear(ev.x, ev.y);
+    });
+  }
+
+  // Pointer: parallax vars + custom cursor + letter shatter
   function onMove(e: React.MouseEvent) {
     const el = wrapRef.current;
     if (el) {
@@ -203,6 +287,7 @@ export default function CinematicIntro({ name }: { name: string }) {
       cur.style.opacity = "1";
       cur.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
     }
+    queueShatter(e.clientX, e.clientY);
   }
   function onLeave() {
     introState.px = 0;
@@ -287,14 +372,17 @@ export default function CinematicIntro({ name }: { name: string }) {
       </div>
 
       {/* SECTION 1 — hero headline */}
-      <div className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-4 text-center transition-opacity duration-500 ${heroVisible ? "opacity-100" : "opacity-0"}`}>
+      <div
+        data-shatter-off={heroVisible ? undefined : ""}
+        className={`pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-4 text-center transition-opacity duration-500 ${heroVisible ? "opacity-100" : "opacity-0"}`}
+      >
         <h1 className="display-font text-[10vw] uppercase leading-[0.92] md:text-[6.5vw]">
           <Letters text={headline1} delay={0.35} />
           <br />
           <Letters text={headline2} delay={0.35 + headline1.length * 0.035 + 0.15} />
         </h1>
-        <p className="mt-7 text-[11px] font-light uppercase tracking-[0.45em] text-white/50 letter-in" style={{ animationDelay: "1.9s" }}>
-          An AI mentor for video editors
+        <p className="mt-7 text-[11px] font-light uppercase tracking-[0.45em] text-white/50">
+          <Letters text="AN AI MENTOR FOR VIDEO EDITORS" delay={1.9} />
         </p>
       </div>
 
