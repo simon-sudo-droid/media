@@ -37,8 +37,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
+  // Keep the sidebar open across navigation on desktop; only auto-close
+  // the overlay on mobile (where a docked panel would cover the screen).
   useEffect(() => {
-    setOpen(false);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setOpen(false);
+    }
   }, [pathname]);
 
   // Esc closes the drawer.
@@ -105,10 +109,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen">
-      {/* Sidebar drawer — hidden until the ☰ button opens it (all screen sizes) */}
+    <div className="min-h-screen md:flex">
+      {/* Desktop docked sidebar — opens with ☰, then stays put across
+          navigation until closed (content shifts beside it). */}
+      <aside
+        className={cn(
+          "sticky top-0 z-30 hidden h-screen shrink-0 overflow-hidden bg-gradient-to-b from-card/80 to-card/30 backdrop-blur-xl transition-all duration-300 md:block",
+          open ? "w-[300px] border-r border-border" : "w-0",
+        )}
+      >
+        <div className="h-full w-[300px]">{SidebarInner}</div>
+      </aside>
+
+      {/* Mobile overlay drawer — closes on navigation */}
       {open && (
-        <div className="fixed inset-0 z-40">
+        <div className="fixed inset-0 z-40 md:hidden">
           <div className="animate-fade absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <aside className="animate-slide-in absolute left-0 top-0 h-full w-80 border-r border-border bg-card/95 shadow-2xl backdrop-blur-xl">
             {SidebarInner}
@@ -116,14 +131,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/60 px-5 backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Open menu">
+            <Button variant="ghost" size="icon" onClick={() => setOpen((v) => !v)} title={open ? "Close menu" : "Open menu"}>
               <Menu className="h-5 w-5" />
             </Button>
-            <Link href="/dashboard" className="hidden items-center gap-2 sm:flex">
+            <Link href="/dashboard" className={cn("hidden items-center gap-2", open ? "" : "sm:flex")}>
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-800">
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
