@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import * as Icons from "lucide-react";
 import {
@@ -14,7 +14,28 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChallengeCard, type Challenge } from "@/components/challenge-card";
 import { PageHero } from "@/components/page-hero";
+import { CursorTrail } from "@/components/cursor-trail";
 import { WEEKS } from "@/lib/mastery";
+
+const prefersReduced = () =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Grow a panel out of the exact card that was clicked (FLIP), and collapse
+// it back into that card on close.
+function flipFrom(el: HTMLElement, first: DOMRect, reverse = false) {
+  const last = el.getBoundingClientRect();
+  const dx = first.left - last.left;
+  const dy = first.top - last.top;
+  const sx = Math.max(0.08, first.width / last.width);
+  const sy = Math.max(0.04, first.height / Math.max(1, last.height));
+  const from = { transformOrigin: "top left", transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`, opacity: 0 };
+  const to = { transformOrigin: "top left", transform: "none", opacity: 1 };
+  return el.animate(reverse ? [to, from] : [from, to], {
+    duration: reverse ? 400 : 500,
+    easing: reverse ? "cubic-bezier(0.4, 0, 1, 1)" : "cubic-bezier(0.16, 1, 0.3, 1)",
+    fill: "forwards",
+  });
+}
 
 const HUB_TILES = [
   { icon: Target, x: "left-[9%]", y: "top-[28%]", d: "0s" },
@@ -130,78 +151,38 @@ export default function LearningHubPage() {
   );
 }
 
-/* ── The big curved "rope" line — draws itself in as it scrolls into
-   view, sweeping down from the section through the cards (Lusion-style). */
-function CurvedLine() {
-  const ref = useRef<SVGPathElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.classList.add("on"); return; }
-    const svg = el.ownerSVGElement;
-    if (!svg) return;
-    const io = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { el.classList.add("on"); io.disconnect(); } },
-      { threshold: 0.05 },
-    );
-    io.observe(svg);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute -left-20 -top-24 z-0 hidden h-[calc(100%+7rem)] w-[46%] overflow-visible md:block"
-      viewBox="0 0 260 1000"
-      fill="none"
-      preserveAspectRatio="none"
-      style={{ filter: "drop-shadow(0 0 16px hsl(224 90% 62% / 0.45))" }}
-    >
-      <path
-        ref={ref}
-        className="draw-line"
-        pathLength={1}
-        vectorEffect="non-scaling-stroke"
-        strokeWidth={4}
-        strokeLinecap="round"
-        stroke="url(#lh-rope)"
-        d="M 205 -40 C 30 120, 250 300, 70 470 S 250 760, 95 1030"
-      />
-      <defs>
-        <linearGradient id="lh-rope" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#7d96ff" stopOpacity="0.95" />
-          <stop offset="0.55" stopColor="#4c6bff" stopOpacity="0.8" />
-          <stop offset="1" stopColor="#4c6bff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-/* Wraps each tab: draws the rope behind, pops the content in on switch. */
+/* Each tab fades/pops in when switched to. */
 function TabPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      <CurvedLine />
-      <div className="pop-open relative z-10">{children}</div>
-    </div>
-  );
+  return <div className="pop-open relative">{children}</div>;
 }
 
 function Mastery() {
   const [sel, setSel] = useState<number | null>(null);
-  const [closing, setClosing] = useState(false);
   const w = WEEKS.find((x) => x.week === sel);
+  const listRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const originRect = useRef<DOMRect | null>(null); // the clicked card's box
 
-  // Return to the grid: play the collapse, then swap back to the list.
+  // Open: remember the clicked card, then expand the panel out of it.
+  function open(week: number, e: React.MouseEvent<HTMLButtonElement>) {
+    originRect.current = e.currentTarget.getBoundingClientRect();
+    setSel(week);
+  }
+  useLayoutEffect(() => {
+    if (!w || !detailRef.current || !originRect.current || prefersReduced()) return;
+    flipFrom(detailRef.current, originRect.current);
+  }, [w]);
+
+  // Close: collapse the panel back into the card, then show the grid.
   function close() {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setSel(null); return; }
-    setClosing(true);
-    setTimeout(() => { setSel(null); setClosing(false); }, 270);
+    const el = detailRef.current;
+    if (!el || !originRect.current || prefersReduced()) { setSel(null); return; }
+    flipFrom(el, originRect.current, true).onfinish = () => setSel(null);
   }
 
   if (w) {
     return (
-      <div className={`space-y-5 ${closing ? "pop-close" : "pop-open"}`}>
+      <div ref={detailRef} className="space-y-5">
         <button onClick={close} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to all weeks
         </button>
@@ -333,23 +314,26 @@ function Mastery() {
   }
 
   return (
-    <div className="space-y-4 stagger">
-      <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
-      {WEEKS.map((wk) => (
-        <button key={wk.week} onClick={() => setSel(wk.week)} className="block w-full text-left">
-          <Card className="lift">
-            <CardContent className="flex items-center gap-3 p-6">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-bold text-primary">W{wk.week}</span>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-semibold">{wk.title}</h3>
-                <p className="truncate text-sm text-muted-foreground">{wk.summary}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground/80">{wk.lessons.length} lessons · drill · {wk.scenarios.length} scenarios · takeaways</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">Learn more <ArrowRight className="h-4 w-4" /></span>
-            </CardContent>
-          </Card>
-        </button>
-      ))}
+    <div ref={listRef} className="relative space-y-4">
+      <CursorTrail containerRef={listRef} />
+      <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Hover the weeks to trace the path; click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
+      <div className="space-y-4 stagger">
+        {WEEKS.map((wk) => (
+          <button key={wk.week} data-trail-card onClick={(e) => open(wk.week, e)} className="block w-full text-left">
+            <Card className="lift">
+              <CardContent className="flex items-center gap-3 p-6">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-sm font-bold text-primary">W{wk.week}</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold">{wk.title}</h3>
+                  <p className="truncate text-sm text-muted-foreground">{wk.summary}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground/80">{wk.lessons.length} lessons · drill · {wk.scenarios.length} scenarios · takeaways</p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary">Learn more <ArrowRight className="h-4 w-4" /></span>
+              </CardContent>
+            </Card>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -363,15 +347,17 @@ function MasteryCell({ icon: Icon, label, text }: { icon: any; label: string; te
 }
 
 function Library_() {
+  const ref = useRef<HTMLDivElement>(null);
   return (
-    <div className="space-y-8">
+    <div ref={ref} className="relative space-y-8">
+      <CursorTrail containerRef={ref} />
       <div className="space-y-5">
         {BOOK_THEMES.map((group) => (
           <section key={group.theme} className="space-y-3">
             <div className="flex items-center gap-3"><h2 className="text-lg font-semibold">{group.theme}</h2><div className="h-px flex-1 bg-border" /></div>
             <div className="grid gap-4 stagger sm:grid-cols-2 lg:grid-cols-3">
               {group.books.map((b) => (
-                <Card key={b.title} className="lift h-full">
+                <Card key={b.title} data-trail-card className="lift h-full">
                   <CardContent className="flex h-full flex-col p-5">
                     <BookOpen className="mb-3 h-5 w-5 text-primary" />
                     <h3 className="font-semibold leading-snug">{b.title}</h3>
@@ -391,7 +377,7 @@ function Library_() {
         <div className="flex items-center gap-3"><h2 className="text-lg font-semibold">Courses & Platforms</h2><div className="h-px flex-1 bg-border" /></div>
         <div className="grid gap-4 stagger sm:grid-cols-2">
           {COURSES.map((c) => (
-            <Card key={c.title} className="lift">
+            <Card key={c.title} data-trail-card className="lift">
               <CardContent className="flex items-start justify-between gap-3 p-5">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold leading-snug">{c.title}</h3><Badge variant={TAG_VARIANT[c.tag]}>{c.tag}</Badge></div>
@@ -416,6 +402,7 @@ function Glossary() {
   const [newTerm, setNewTerm] = useState("");
   const [newDef, setNewDef] = useState("");
   const [busy, setBusy] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   function load() {
     api<Term[]>("/glossary").then((rows) =>
@@ -454,7 +441,8 @@ function Glossary() {
   }
 
   return (
-    <div className="space-y-5">
+    <div ref={rootRef} className="relative space-y-5">
+      <CursorTrail containerRef={rootRef} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -501,7 +489,7 @@ function Glossary() {
         </div>
         <div className="flex flex-wrap gap-2">
           {filtered.map((t) => (
-            <button key={t.term} onClick={() => setSelected(t)}
+            <button key={t.term} data-trail-card onClick={() => setSelected(t)}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${headline?.term === t.term ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-secondary/60"}`}>
               {t.term}
             </button>
@@ -534,9 +522,11 @@ function Practice() {
   const grouped = LEVEL_ORDER.map((l) => ({ level: l, items: courses.filter((c) => c.level === l) })).filter((g) => g.items.length);
   const KIND_LABEL: Record<string, string> = { daily: "Daily", broll: "B-roll", editing: "Editing" };
   const chGrouped = ["daily", "broll", "editing"].map((k) => ({ kind: k, items: challenges.filter((c) => c.kind === k) })).filter((g) => g.items.length);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="space-y-8">
+    <div ref={rootRef} className="relative space-y-8">
+      <CursorTrail containerRef={rootRef} />
       {/* Courses */}
       {grouped.length > 0 && (
         <section className="space-y-4">
@@ -550,7 +540,7 @@ function Practice() {
                   const pct = c.lesson_count ? Math.round((c.completed_count / c.lesson_count) * 100) : 0;
                   return (
                     <Link key={c.id} href={`/academy/${c.slug}`}>
-                      <Card className="lift h-full"><CardContent className="flex h-full flex-col p-6">
+                      <Card data-trail-card className="lift h-full"><CardContent className="flex h-full flex-col p-6">
                         <div className="mb-4 flex items-start justify-between">
                           <div className="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary"><Icon className="h-5 w-5" /></div>
                           <Badge variant="secondary">{LEVEL_LABEL[c.level]}</Badge>
@@ -575,7 +565,7 @@ function Practice() {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {quizzes.map((q) => (
               <Link key={q.id} href={`/quizzes/${q.slug}`}>
-                <Card className="lift h-full"><CardContent className="flex h-full flex-col p-6">
+                <Card data-trail-card className="lift h-full"><CardContent className="flex h-full flex-col p-6">
                   <div className="mb-4 flex items-start justify-between">
                     <div className="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary"><ListChecks className="h-5 w-5" /></div>
                     <Badge variant="secondary" className="capitalize">{q.level}</Badge>
