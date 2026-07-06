@@ -1,0 +1,11 @@
+Model Information:
+* title:	Unnamed Camera (Photographie)
+* source:	https://sketchfab.com/3d-models/unnamed-camera-photographie-61cdcebee9e943ec9504d83ba68a7fe0
+* author:	Amine.Elouneg (https://sketchfab.com/Amine.Elouneg)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Unnamed Camera (Photographie)" (https://sketchfab.com/3d-models/unnamed-camera-photographie-61cdcebee9e943ec9504d83ba68a7fe0) by Amine.Elouneg (https://sketchfab.com/Amine.Elouneg) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

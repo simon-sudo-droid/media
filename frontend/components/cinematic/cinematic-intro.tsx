@@ -371,6 +371,16 @@ export default function CinematicIntro({ name }: { name: string }) {
         Scroll to discover
       </div>
 
+      {/* CC-BY-4.0 attribution for the camera model (required by license) */}
+      <a
+        href="https://sketchfab.com/3d-models/unnamed-camera-photographie-61cdcebee9e943ec9504d83ba68a7fe0"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-2 right-3 z-20 text-[9px] font-light tracking-wide text-white/25 transition-colors hover:text-white/60"
+      >
+        3D camera by Amine.Elouneg (CC-BY 4.0)
+      </a>
+
       {/* SECTION 1 — hero headline */}
       <div
         data-shatter-off={heroVisible ? undefined : ""}
