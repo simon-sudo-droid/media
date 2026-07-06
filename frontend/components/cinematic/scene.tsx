@@ -69,13 +69,18 @@ function CameraModel({ animate }: { animate: boolean }) {
   const { scene } = useGLTF(MODEL_URL);
 
   // Normalize: center at origin, fit the longest side to ~1.9 units.
+  // This model is a rigged Sketchfab export (huge, off-center, skinned),
+  // so we update matrices before measuring and disable frustum culling —
+  // skinned meshes otherwise report stale bounds and get culled (invisible).
   useMemo(() => {
+    scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
     const s = 1.9 / Math.max(size.x, size.y, size.z, 1e-5);
     scene.scale.setScalar(s);
-    const c = box.getCenter(new THREE.Vector3()).multiplyScalar(s);
-    scene.position.set(-c.x, -c.y, -c.z);
+    scene.position.set(-center.x * s, -center.y * s, -center.z * s);
+    scene.traverse((o) => { o.frustumCulled = false; });
   }, [scene]);
 
   useFrame((state, dt) => {
