@@ -124,6 +124,13 @@
 .pop-open  { animation: pop-open 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: center top; }
 .pop-close { animation: pop-close 0.28s cubic-bezier(0.4, 0, 1, 1) both; transform-origin: center top; }
 
+/* Returning to the card grid: the content collapses down into place. */
+@keyframes collapse-in {
+  0%   { opacity: 0; transform: scale(1.08) translateY(-14px); }
+  100% { opacity: 1; transform: none; }
+}
+.collapse-in { animation: collapse-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: top center; }
+
 /* ── Curved connector "rope" that draws in on scroll ── */
 @keyframes draw-line { to { stroke-dashoffset: 0; } }
 .draw-line { stroke-dasharray: 1; stroke-dashoffset: 1; }

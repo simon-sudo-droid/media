@@ -157,6 +157,7 @@ function TabPanel({ children }: { children: React.ReactNode }) {
 
 function Mastery() {
   const [sel, setSel] = useState<number | null>(null);
+  const [returning, setReturning] = useState(false);
   const w = WEEKS.find((x) => x.week === sel);
   const listRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -172,9 +173,12 @@ function Mastery() {
     flipFrom(detailRef.current, originRect.current);
   }, [w]);
 
-  // Back: return straight to the W-cards grid (which re-enters normally).
+  // Back: return to the W-cards grid, collapsing the content into place.
   function close() {
     setSel(null);
+    if (prefersReduced()) return;
+    setReturning(true);
+    setTimeout(() => setReturning(false), 480);
   }
 
   if (w) {
@@ -312,8 +316,8 @@ function Mastery() {
 
   return (
     <div ref={listRef} className="relative space-y-4">
-      <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Hover the weeks to trace the path; click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
-      <div className="space-y-4 stagger">
+      <p className="text-sm text-muted-foreground">An 8-week deep-dive curriculum for editors. Click any week for the full lesson — overview, goal, 3 deep-dive lessons, a step-by-step drill, 5 real-world scenarios (with the why, the steps, and the pitfall), and key takeaways.</p>
+      <div className={`space-y-4 ${returning ? "collapse-in" : "stagger"}`}>
         {WEEKS.map((wk) => (
           <button key={wk.week} data-trail-card onClick={(e) => open(wk.week, e)} className="block w-full text-left">
             <Card className="lift">
