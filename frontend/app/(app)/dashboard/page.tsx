@@ -48,8 +48,10 @@ export default function DashboardPage() {
 
   return (
     <>
-      {/* ── Cinematic scroll-driven 3D intro (replaces the hero only) ── */}
-      <div className="no-reveal -mx-5 -mt-5 md:-mx-8 md:-mt-8">
+      {/* ── Cinematic scroll-driven 3D intro (replaces the hero only) ──
+          bg-black backs the whole area so no gap can ever show the page
+          background if the pinned section is briefly mis-sized. */}
+      <div className="no-reveal -mx-5 -mt-5 min-h-screen bg-black md:-mx-8 md:-mt-8">
         <CinematicIntro name={firstName} />
       </div>
 

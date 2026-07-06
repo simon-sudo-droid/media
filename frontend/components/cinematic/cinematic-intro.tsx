@@ -207,7 +207,13 @@ export default function CinematicIntro({ name }: { name: string }) {
     );
     io.observe(wrapRef.current);
 
+    // Recompute the pin geometry after the layout settles (the sidebar
+    // may still be animating closed on arrival), so the pinned hero spans
+    // the full width instead of freezing at a stale, narrower size.
+    const refreshes = [120, 400, 700].map((ms) => setTimeout(() => ScrollTrigger.refresh(), ms));
+
     return () => {
+      refreshes.forEach(clearTimeout);
       st.kill();
       io.disconnect();
       gsap.ticker.remove(tick);
