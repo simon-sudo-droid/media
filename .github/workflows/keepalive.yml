@@ -22,3 +22,6 @@ jobs:
           echo "Pinging at $(date -u)"
           curl -sS -m 90 -o /dev/null -w "web  -> %{http_code}\n" https://editmentor-web.onrender.com/ || true
           curl -sS -m 90 -o /dev/null -w "api  -> %{http_code}\n" https://editmentor-api.onrender.com/health || true
+          # Idempotent daily trigger: builds the Industry Monitoring digest
+          # once per day even if nobody has opened the page yet.
+          curl -sS -m 120 -o /dev/null -w "cron -> %{http_code}\n" https://editmentor-api.onrender.com/industry/cron || true

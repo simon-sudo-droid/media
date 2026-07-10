@@ -22,6 +22,9 @@ from app.models.hub import (
     HelpQuestion,
     FaqEntry,
     ChangelogEntry,
+    IndustryDigest,
+    IndustrySeen,
+    IndustryTool,
 )
 
 __all__ = [
@@ -44,4 +47,7 @@ __all__ = [
     "HelpQuestion",
     "FaqEntry",
     "ChangelogEntry",
+    "IndustryDigest",
+    "IndustrySeen",
+    "IndustryTool",
 ]

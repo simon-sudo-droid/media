@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, Trophy, LogOut, Menu, X, Flame as FlameIcon,
-  ListTodo, BadgeCheck, Wrench, Shield, BarChart3, LifeBuoy, Wand2, Sun, Moon, Monitor,
+  ListTodo, BadgeCheck, Wrench, Shield, BarChart3, LifeBuoy, Wand2, Sun, Moon, Monitor, Radar,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -23,6 +23,7 @@ const NAV = [
   { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
   { href: "/checklists", label: "Checklists", icon: ListTodo },
   { href: "/tracker", label: "Tracker Analytics", icon: BarChart3 },
+  { href: "/industry", label: "Industry Monitoring", icon: Radar },
   { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
   { href: "/guide", label: "Guide & Help", icon: LifeBuoy },
 ];

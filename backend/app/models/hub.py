@@ -69,3 +69,37 @@ class ChangelogEntry(Base):
     body: Mapped[str] = mapped_column(Text, default="")
     tag: Mapped[str] = mapped_column(String(40), default="Update")
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class IndustryDigest(Base):
+    """One generated Daily AI Video Editing Update (JSON payload) per date."""
+    __tablename__ = "industry_digests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    digest_date: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # YYYY-MM-DD
+    payload: Mapped[str] = mapped_column(Text)  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class IndustrySeen(Base):
+    """URLs already reported in a digest — prevents duplicate reporting across days."""
+    __tablename__ = "industry_seen"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(String(600), unique=True, index=True)
+    first_seen: Mapped[str] = mapped_column(String(20), default="")  # YYYY-MM-DD
+
+
+class IndustryTool(Base):
+    """Running 'Tools Worth Testing' list, curated + auto-discovered."""
+    __tablename__ = "industry_tools"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    description: Mapped[str] = mapped_column(Text, default="")
+    use_case: Mapped[str] = mapped_column(Text, default="")
+    advantages: Mapped[str] = mapped_column(Text, default="")
+    limitations: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(10), default="Medium")  # High/Medium/Low
+    url: Mapped[str] = mapped_column(String(600), default="")
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
