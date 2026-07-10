@@ -38,18 +38,16 @@ FEEDS = [
     ("https://www.therundown.ai/feed", "The Rundown AI", "news"),
     ("https://www.bensbites.com/feed", "Ben's Bites", "news"),
     ("https://www.futuretools.io/news/rss.xml", "FutureTools", "news"),
-    # Official vendor blogs (updates to existing tools)
-    ("https://blog.adobe.com/en/rss.xml", "Adobe Blog", "vendor"),
-    ("https://runwayml.com/blog/rss.xml", "Runway", "vendor"),
-    ("https://www.descript.com/blog/rss.xml", "Descript", "vendor"),
-    ("https://www.veed.io/blog/rss.xml", "VEED", "vendor"),
-    ("https://www.canva.com/newsroom/news/feed/", "Canva Newsroom", "vendor"),
+    # Official vendor blogs (updates to existing tools).
+    # Most vendors don't expose RSS, so Google News search feeds track their
+    # announcements — each item still links to the original article.
     ("https://lumalabs.ai/blog/rss.xml", "Luma AI", "vendor"),
-    # B-roll & stock footage
-    ("https://www.storyblocks.com/blog/feed", "Storyblocks", "broll"),
-    ("https://artlist.io/blog/feed/", "Artlist", "broll"),
-    ("https://envato.com/blog/feed/", "Envato", "broll"),
-    ("https://www.pexels.com/blog/feed/", "Pexels", "broll"),
+    ("https://news.google.com/rss/search?q=%22Adobe%20Premiere%20Pro%22%20OR%20%22Adobe%20Firefly%22%20OR%20Descript%20OR%20CapCut%20when%3A7d&hl=en-US&gl=US&ceid=US:en", "Google News — editing tools", "vendor"),
+    ("https://news.google.com/rss/search?q=%22Runway%22%20OR%20%22Pika%22%20OR%20%22Kling%20AI%22%20OR%20%22Luma%20AI%22%20AI%20video%20when%3A7d&hl=en-US&gl=US&ceid=US:en", "Google News — AI video", "vendor"),
+    ("https://news.google.com/rss/search?q=VEED%20OR%20%22Canva%22%20AI%20video%20when%3A7d&hl=en-US&gl=US&ceid=US:en", "Google News — creator tools", "vendor"),
+    # B-roll & stock footage (same approach — vendor blogs have no feeds)
+    ("https://news.google.com/rss/search?q=%22AI%20b-roll%22%20OR%20%22AI%20stock%20footage%22%20OR%20%22AI-generated%20video%22%20stock%20when%3A7d&hl=en-US&gl=US&ceid=US:en", "Google News — AI stock", "broll"),
+    ("https://news.google.com/rss/search?q=Storyblocks%20OR%20Artlist%20OR%20%22Envato%22%20OR%20%22Pexels%22%20when%3A7d&hl=en-US&gl=US&ceid=US:en", "Google News — stock providers", "broll"),
     # Community & emerging trends
     ("https://www.reddit.com/r/ArtificialIntelligence/.rss", "r/ArtificialIntelligence", "community"),
     ("https://www.reddit.com/r/VideoEditing/.rss", "r/VideoEditing", "community"),
