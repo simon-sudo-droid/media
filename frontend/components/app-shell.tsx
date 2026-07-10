@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sparkles, LayoutDashboard, GraduationCap, Tv, Trophy, LogOut, Menu, X, Flame as FlameIcon,
   ListTodo, BadgeCheck, Wrench, Shield, BarChart3, LifeBuoy, Wand2, Sun, Moon, Monitor, Radar,
+  Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -18,6 +19,7 @@ import { AccountMenu } from "@/components/account-menu";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/academy", label: "Learning Hub", icon: GraduationCap },
+  { href: "/workspace", label: "Content Workspace", icon: Briefcase },
   { href: "/tools", label: "AI Tools", icon: Wand2 },
   { href: "/reference-channels", label: "Reference Channels", icon: Tv },
   { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
