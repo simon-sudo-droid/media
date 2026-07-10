@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Briefcase, FileText, NotebookPen, Library, Sparkles as SparkIcon, TrendingUp,
+  Briefcase, FileText, NotebookPen, Library, TrendingUp,
   ExternalLink, Plus, Loader2, Trash2, Search, ChevronDown, ChevronUp, Flame,
-  CheckCircle2, Lightbulb, Link2, GraduationCap, Wrench,
+  CheckCircle2, Lightbulb, Link2, Wrench,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -30,8 +30,6 @@ type Progress = {
   tools_learned: string[]; top_subjects: { tag: string; count: number }[];
   types: { type: string; count: number }[];
 };
-type Reco = { topic: string; title: string; url: string; note: string; source?: string; date?: string };
-
 const TILES = [
   { icon: FileText, x: "left-[9%]", y: "top-[28%]", d: "0s" },
   { icon: NotebookPen, x: "left-[16%]", y: "top-[66%]", d: "0.9s" },
@@ -43,7 +41,6 @@ const TABS = [
   { key: "content", label: "Current Content", icon: FileText },
   { key: "log", label: "Weekly Learning Log", icon: NotebookPen },
   { key: "library", label: "Shared Library", icon: Library },
-  { key: "recommended", label: "Recommended", icon: SparkIcon },
   { key: "progress", label: "Learning Progress", icon: TrendingUp },
 ];
 
@@ -79,7 +76,6 @@ export default function WorkspacePage() {
       {tab === "content" && <div className="pop-open"><ContentTab /></div>}
       {tab === "log" && <div className="pop-open"><LogTab /></div>}
       {tab === "library" && <div className="pop-open"><LibraryTab /></div>}
-      {tab === "recommended" && <div className="pop-open"><RecommendedTab /></div>}
       {tab === "progress" && <div className="pop-open"><ProgressTab /></div>}
     </div>
   );
@@ -442,50 +438,6 @@ function EntryCard({ e, showAuthor, onDelete }: { e: Entry; showAuthor?: boolean
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/* ── 4) Recommended Weekly Learning ────────────────────────── */
-function RecommendedTab() {
-  const [data, setData] = useState<{ fresh: Reco[]; curated: Reco[] } | null>(null);
-  useEffect(() => { api("/workspace/recommendations").then(setData).catch(() => {}); }, []);
-
-  return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <div className="flex items-center gap-2"><Flame className="h-5 w-5 text-orange-400" /><h2 className="text-lg font-semibold">Fresh this week</h2><span className="text-sm text-muted-foreground">— surfaced by Industry Monitoring</span></div>
-        {!data && <p className="py-4 text-sm text-muted-foreground">Loading…</p>}
-        {data && data.fresh.length === 0 && <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No fresh picks yet — check back after today&apos;s industry digest builds.</p>}
-        <div className="grid gap-4 stagger md:grid-cols-2">
-          {data?.fresh.map((r, i) => (
-            <Card key={i} className="lift"><CardContent className="p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="default">{r.topic}</Badge>
-                {r.source && <Badge variant="secondary">{r.source}</Badge>}
-                {r.date && <span className="text-xs text-muted-foreground">{r.date}</span>}
-              </div>
-              <h3 className="mt-2 font-semibold leading-snug">{r.title}</h3>
-              {r.note && <p className="mt-1 text-sm text-muted-foreground">{r.note}</p>}
-              {r.url && <a href={r.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">Explore <ExternalLink className="h-3.5 w-3.5" /></a>}
-            </CardContent></Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center gap-2"><GraduationCap className="h-5 w-5 text-primary" /><h2 className="text-lg font-semibold">Evergreen essentials</h2><span className="text-sm text-muted-foreground">— the highest-quality resource per craft area</span></div>
-        <div className="grid gap-4 stagger md:grid-cols-2 lg:grid-cols-3">
-          {data?.curated.map((r) => (
-            <Card key={r.title} className="lift h-full"><CardContent className="flex h-full flex-col p-5">
-              <Badge variant="secondary" className="self-start">{r.topic}</Badge>
-              <h3 className="mt-2 font-semibold leading-snug">{r.title}</h3>
-              <p className="mt-1 flex-1 text-sm text-muted-foreground">{r.note}</p>
-              <a href={r.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">Start learning <ExternalLink className="h-3.5 w-3.5" /></a>
-            </CardContent></Card>
-          ))}
-        </div>
-      </section>
-    </div>
   );
 }
 

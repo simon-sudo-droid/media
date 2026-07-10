@@ -2,7 +2,6 @@
 and weekly learning recommendations."""
 from __future__ import annotations
 
-import json
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import IndustryDigest, LearningEntry, User, WorkContent
+from app.models import LearningEntry, User, WorkContent
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
 
@@ -229,36 +228,4 @@ def learning_progress(db: Session = Depends(get_db), user: User = Depends(get_cu
     }
 
 
-# ── Recommended Weekly Learning ──────────────────────────────
-# Curated, stable, high-quality starting points per craft area…
-CURATED = [
-    {"topic": "AI video editing", "title": "Runway Academy", "url": "https://academy.runwayml.com", "note": "Official tutorials for AI video generation and editing workflows."},
-    {"topic": "Editing breakdowns", "title": "Every Frame a Painting", "url": "https://www.youtube.com/@everyframeapainting", "note": "The gold-standard video essays on editing craft."},
-    {"topic": "Storytelling", "title": "StudioBinder — Film Theory & Storytelling", "url": "https://www.studiobinder.com/blog/", "note": "Deep, practical breakdowns of story structure and scene craft."},
-    {"topic": "Motion graphics", "title": "School of Motion Blog", "url": "https://www.schoolofmotion.com/blog", "note": "Tutorials and career guidance for motion design."},
-    {"topic": "Prompt engineering", "title": "Learn Prompting", "url": "https://learnprompting.org", "note": "Free structured course on writing effective AI prompts."},
-    {"topic": "Color grading", "title": "Cullen Kelly (YouTube)", "url": "https://www.youtube.com/@CullenKelly", "note": "Professional colorist teaching grading fundamentals."},
-    {"topic": "Sound design", "title": "Premiere Gal — Audio Tutorials", "url": "https://www.youtube.com/@PremiereGal", "note": "Practical audio cleanup and mixing for editors."},
-    {"topic": "B-roll techniques", "title": "Daniel Schiffer (YouTube)", "url": "https://www.youtube.com/@DanielSchiffer", "note": "The reference channel for cinematic b-roll shooting and cutting."},
-    {"topic": "New software features", "title": "Adobe Premiere Pro — What's New", "url": "https://helpx.adobe.com/premiere-pro/using/whats-new.html", "note": "Official changelog — scan monthly for workflow-relevant features."},
-]
-
-
-@router.get("/recommendations")
-def weekly_recommendations(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Curated evergreen picks + the freshest finds from Industry Monitoring."""
-    fresh: list[dict] = []
-    row = db.scalar(select(IndustryDigest).order_by(IndustryDigest.digest_date.desc()))
-    if row:
-        try:
-            payload = json.loads(row.payload)
-            for section, label in (("workflow", "Workflow"), ("new_tools", "New tool"), ("trending", "Trending")):
-                for it in payload.get(section, [])[:3]:
-                    fresh.append({
-                        "topic": label, "title": it.get("title", ""),
-                        "url": it.get("url", ""), "note": it.get("summary", ""),
-                        "source": it.get("source", ""), "date": it.get("date", ""),
-                    })
-        except Exception:
-            pass
-    return {"fresh": fresh[:8], "curated": CURATED}
+# (Weekly learning recommendations live in the Industry Monitoring section.)
