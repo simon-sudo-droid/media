@@ -33,7 +33,12 @@ class User(Base):
     @property
     def is_admin(self) -> bool:
         from app.core.config import settings
-        return self.email.lower() == settings.ADMIN_EMAIL.lower()
+        admins = {
+            e.strip().lower()
+            for e in f"{settings.ADMIN_EMAILS},{settings.ADMIN_EMAIL}".split(",")
+            if e.strip()
+        }
+        return self.email.lower() in admins
 
     @property
     def level(self) -> str:

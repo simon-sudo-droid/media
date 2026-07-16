@@ -38,8 +38,11 @@ class Settings(BaseSettings):
     AUTH_PROVIDER: str = "local"  # local | clerk
     CLERK_SECRET_KEY: str = ""
 
-    # The single admin account (gets the Admin panel + Creative Intelligence).
+    # Admin accounts (get the Admin panel + Creative Intelligence).
+    # ADMIN_EMAILS is a comma-separated list; ADMIN_EMAIL is kept for
+    # back-compat with existing env overrides (both are honored).
     ADMIN_EMAIL: str = "simongodlisten10@gmail.com"
+    ADMIN_EMAILS: str = "simongodlisten10@gmail.com,jeerameljoy@ataandeadvisors.com"
 
     # AI
     AI_PROVIDER: str = "mock"  # mock | openai | claude | gemini
