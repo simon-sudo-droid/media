@@ -22,13 +22,18 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def _use_psycopg_driver(cls, v: str) -> str:
-        """Managed Postgres (Render/Supabase/Heroku) hands out a
+        """Managed Postgres (Supabase/Render/Heroku) hands out a
         `postgres://` or `postgresql://` URL. SQLAlchemy + psycopg 3 needs the
-        explicit `postgresql+psycopg://` driver prefix, so normalize it here."""
+        explicit `postgresql+psycopg://` driver prefix, so normalize it here.
+        Supabase additionally requires TLS, so pin sslmode=require for its
+        hosts when the URL doesn't set one."""
         if v.startswith("postgres://"):
             v = "postgresql://" + v[len("postgres://"):]
         if v.startswith("postgresql://"):
             v = "postgresql+psycopg://" + v[len("postgresql://"):]
+        if "supabase.co" in v or "pooler.supabase.com" in v:
+            if "sslmode=" not in v:
+                v += ("&" if "?" in v else "?") + "sslmode=require"
         return v
 
     # Auth

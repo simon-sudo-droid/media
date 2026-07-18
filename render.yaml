@@ -1,13 +1,13 @@
-# Render Blueprint — provisions the full EditMentor AI stack in one click.
+# Render Blueprint — provisions the EditMentor AI web services.
 # In the Render dashboard: New ▸ Blueprint ▸ connect this repo ▸ Apply.
-# Render reads this file and creates the database + both services, wiring the
-# frontend to the backend automatically.
-
-databases:
-  - name: editmentor-db
-    plan: free
-    databaseName: editmentor
-    user: editmentor
+#
+# The PostgreSQL database lives on SUPABASE (not Render — Render's free
+# Postgres expires every 30 days). Set DATABASE_URL in the Render dashboard
+# (editmentor-api ▸ Environment) to the Supabase SESSION-POOLER connection
+# string, e.g.:
+#   postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+# (Use the session pooler on port 5432 — it is IPv4-compatible and works
+# with SQLAlchemy; the app adds sslmode=require automatically.)
 
 services:
   # ── Backend API (FastAPI) ──────────────────────────────────
@@ -20,9 +20,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: editmentor-db
-          property: connectionString
+        sync: false                   # Supabase connection string — set in the dashboard (secret)
       - key: JWT_SECRET
         generateValue: true          # strong random secret
       - key: AI_PROVIDER
