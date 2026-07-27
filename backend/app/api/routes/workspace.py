@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import or_, select
+from sqlalchemy import delete as sa_delete, or_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -165,11 +165,14 @@ def delete_content(cid: int, db: Session = Depends(get_db), user: User = Depends
         raise HTTPException(404, "Not found")
     if not user.is_admin and row.created_by != user.id:
         raise HTTPException(403, "Only the creator or an admin can delete this")
-    # Detach learning entries + drop versions so the FKs stay valid.
-    for e in db.scalars(select(LearningEntry).where(LearningEntry.content_id == cid)).all():
-        e.content_id = None
-    for v in db.scalars(select(WorkContentVersion).where(WorkContentVersion.content_id == cid)).all():
-        db.delete(v)
+    # Detach learning entries and drop versions FIRST, flushing so the child
+    # rows are gone before the parent delete (otherwise SQLAlchemy may order
+    # the parent DELETE first and Postgres rejects it on the FK).
+    db.execute(
+        sa_update(LearningEntry).where(LearningEntry.content_id == cid).values(content_id=None)
+    )
+    db.execute(sa_delete(WorkContentVersion).where(WorkContentVersion.content_id == cid))
+    db.flush()
     db.delete(row)
     db.commit()
 
