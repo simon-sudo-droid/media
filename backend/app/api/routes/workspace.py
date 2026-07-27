@@ -2,6 +2,7 @@
 and weekly learning recommendations."""
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,9 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import LearningEntry, User, WorkContent
+from app.models import LearningEntry, User, WorkContent, WorkContentVersion
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
+
+# Talking-head narration pace — used for the runtime estimate on scripts.
+WORDS_PER_MINUTE = 150
 
 STATUSES = ["Draft", "Ready for Edit", "In Editing", "In Review", "Published"]
 
@@ -35,6 +39,8 @@ class ContentIn(BaseModel):
     status: str = Field(default="Draft", max_length=30)
     notes: str = ""
     links: str = ""
+    owner: str = Field(default="", max_length=120)
+    due_date: str = Field(default="", max_length=20)
 
 
 class ContentPatch(BaseModel):
@@ -45,22 +51,83 @@ class ContentPatch(BaseModel):
     status: str | None = None
     notes: str | None = None
     links: str | None = None
+    owner: str | None = None
+    due_date: str | None = None
 
 
-def _content_out(c: WorkContent) -> dict:
-    return {
+def _doc_name(raw: str) -> dict:
+    """Parse a links line into {name, url}.
+
+    Accepts "Real doc name | https://…"; otherwise derives a readable name
+    from the URL (last path segment or host) so the UI never shows "Doc 1".
+    """
+    line = raw.strip()
+    name = ""
+    url = line
+    if "|" in line:
+        left, right = line.split("|", 1)
+        if right.strip().startswith("http"):
+            name, url = left.strip(), right.strip()
+        elif left.strip().startswith("http"):
+            url, name = left.strip(), right.strip()
+    if not name:
+        cleaned = url.split("?")[0].rstrip("/")
+        tail = cleaned.rsplit("/", 1)[-1] if "/" in cleaned else cleaned
+        # Google Docs URLs end in /edit or a long id — fall back to the host.
+        if not tail or tail in ("edit", "view", "preview") or len(tail) > 48:
+            host = url.split("//")[-1].split("/")[0].replace("www.", "")
+            name = host or "Document"
+        else:
+            name = tail.replace("-", " ").replace("_", " ")
+    return {"name": name[:80], "url": url}
+
+
+def _word_count(text: str) -> int:
+    return len([w for w in (text or "").split() if any(ch.isalnum() for ch in w)])
+
+
+def _runtime(words: int) -> str:
+    if not words:
+        return "0:00"
+    total = round(words / WORDS_PER_MINUTE * 60)
+    return f"{total // 60}:{total % 60:02d}"
+
+
+def _content_out(c: WorkContent, db: Session | None = None) -> dict:
+    words = _word_count(c.body)
+    out = {
         "id": c.id, "category": c.category, "title": c.title,
         "content_type": c.content_type, "platform": c.platform, "body": c.body,
         "status": c.status, "notes": c.notes,
-        "links": [l.strip() for l in (c.links or "").splitlines() if l.strip()],
+        "links": [_doc_name(l) for l in (c.links or "").splitlines() if l.strip()],
+        "owner": c.owner or "", "due_date": c.due_date or "",
+        "word_count": words, "runtime": _runtime(words),
         "updated_at": c.updated_at.isoformat() if c.updated_at else "",
     }
+    if db is not None:
+        out["version_count"] = len(db.scalars(
+            select(WorkContentVersion.id).where(WorkContentVersion.content_id == c.id)
+        ).all())
+        # Techniques logged against this content (learning → doing link).
+        rows = db.execute(
+            select(LearningEntry, User.full_name)
+            .join(User, User.id == LearningEntry.user_id)
+            .where(LearningEntry.content_id == c.id)
+            .order_by(LearningEntry.id.desc())
+        ).all()
+        out["techniques"] = [
+            {"id": e.id, "title": e.title, "url": e.url, "user_name": n or "",
+             "tags": [t.strip() for t in (e.tags or "").split(",") if t.strip()],
+             "apply_plan": e.apply_plan}
+            for e, n in rows
+        ]
+    return out
 
 
 @router.get("/content")
 def list_content(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     rows = db.scalars(select(WorkContent).order_by(WorkContent.updated_at.desc())).all()
-    return [_content_out(c) for c in rows]
+    return [_content_out(c, db) for c in rows]
 
 
 @router.post("/content", status_code=201)
@@ -71,7 +138,7 @@ def add_content(body: ContentIn, db: Session = Depends(get_db), user: User = Dep
     db.add(row)
     db.commit()
     db.refresh(row)
-    return _content_out(row)
+    return _content_out(row, db)
 
 
 @router.patch("/content/{cid}")
@@ -79,11 +146,16 @@ def update_content(cid: int, body: ContentPatch, db: Session = Depends(get_db), 
     row = db.get(WorkContent, cid)
     if not row:
         raise HTTPException(404, "Not found")
-    for k, v in body.model_dump(exclude_none=True).items():
+    data = body.model_dump(exclude_none=True)
+    # Snapshot the previous script before overwriting it, so a bad edit is
+    # always recoverable from version history.
+    if "body" in data and data["body"] != row.body:
+        db.add(WorkContentVersion(content_id=row.id, body=row.body or "", edited_by=user.id))
+    for k, v in data.items():
         setattr(row, k, v)
     db.commit()
     db.refresh(row)
-    return _content_out(row)
+    return _content_out(row, db)
 
 
 @router.delete("/content/{cid}", status_code=204)
@@ -93,8 +165,124 @@ def delete_content(cid: int, db: Session = Depends(get_db), user: User = Depends
         raise HTTPException(404, "Not found")
     if not user.is_admin and row.created_by != user.id:
         raise HTTPException(403, "Only the creator or an admin can delete this")
+    # Detach learning entries + drop versions so the FKs stay valid.
+    for e in db.scalars(select(LearningEntry).where(LearningEntry.content_id == cid)).all():
+        e.content_id = None
+    for v in db.scalars(select(WorkContentVersion).where(WorkContentVersion.content_id == cid)).all():
+        db.delete(v)
     db.delete(row)
     db.commit()
+
+
+# ── Version history ──────────────────────────────────────────
+@router.get("/content/{cid}/versions")
+def list_versions(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = db.execute(
+        select(WorkContentVersion, User.full_name)
+        .outerjoin(User, User.id == WorkContentVersion.edited_by)
+        .where(WorkContentVersion.content_id == cid)
+        .order_by(WorkContentVersion.id.desc())
+    ).all()
+    return [
+        {
+            "id": v.id, "edited_at": v.edited_at.isoformat() if v.edited_at else "",
+            "edited_by": name or "", "word_count": _word_count(v.body),
+            "preview": (v.body or "")[:280], "body": v.body or "",
+        }
+        for v, name in rows
+    ]
+
+
+@router.post("/content/{cid}/versions/{vid}/restore")
+def restore_version(cid: int, vid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    row = db.get(WorkContent, cid)
+    ver = db.get(WorkContentVersion, vid)
+    if not row or not ver or ver.content_id != cid:
+        raise HTTPException(404, "Not found")
+    # Snapshot current before restoring, so the restore itself is undoable.
+    db.add(WorkContentVersion(content_id=row.id, body=row.body or "", edited_by=user.id))
+    row.body = ver.body
+    db.commit()
+    db.refresh(row)
+    return _content_out(row, db)
+
+
+# ── Script analysis (deterministic — no API key needed) ──────
+FILLERS = ["um", "uh", "basically", "actually", "literally", "just", "really", "very", "like"]
+
+
+@router.get("/content/{cid}/analyze")
+def analyze_script(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    row = db.get(WorkContent, cid)
+    if not row:
+        raise HTTPException(404, "Not found")
+    body = row.body or ""
+    words = _word_count(body)
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", body) if s.strip()]
+    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
+
+    flags: list[dict] = []
+    long_s = [s for s in sentences if _word_count(s) > 28]
+    if long_s:
+        flags.append({
+            "kind": "Pacing",
+            "detail": f"{len(long_s)} sentence(s) run over 28 words — these read long on camera. Split them so each line lands one idea.",
+            "sample": long_s[0][:160],
+        })
+    long_p = [p for p in paragraphs if _word_count(p) > 120]
+    if long_p:
+        flags.append({
+            "kind": "Structure",
+            "detail": f"{len(long_p)} block(s) exceed ~120 words with no break — likely a stretch with no visual change. Plan b-roll or a punch-in here.",
+            "sample": long_p[0][:160],
+        })
+    found_fillers = [f for f in FILLERS if re.search(rf"\b{f}\b", body, re.I)]
+    if found_fillers:
+        flags.append({
+            "kind": "Tighten",
+            "detail": "Filler words present: " + ", ".join(found_fillers[:6]) + ". Cutting these raises idea-density per second.",
+            "sample": "",
+        })
+
+    hook = sentences[0] if sentences else ""
+    hook_notes: list[str] = []
+    if hook:
+        hw = _word_count(hook)
+        if hw > 20:
+            hook_notes.append(f"The opening line is {hw} words — tighten toward 8–14 so it lands before the scroll.")
+        if not re.search(r"\d", hook):
+            hook_notes.append("No number or concrete specific in the hook — specifics ('3 years', '£10k') buy credibility.")
+        if re.match(r"^(hi|hey|hello|welcome|good morning)", hook.strip(), re.I):
+            hook_notes.append("Opens with a greeting — delete it and start on the most surprising line.")
+        if not hook_notes:
+            hook_notes.append("Opening line looks tight — check it pairs with motion or bold text in the first second.")
+    else:
+        hook_notes.append("No script body yet — paste the script to analyze the hook.")
+
+    # Beat sheet: one suggested shot per paragraph/sentence group.
+    SHOTS = ["Medium — speaker on camera", "B-roll — illustrate the point", "Close-up — detail or reaction",
+             "Wide — establish context", "Insert — screen / product / hands", "Punch-in — emphasis"]
+    beats = []
+    for i, p in enumerate((paragraphs or sentences)[:12]):
+        beats.append({
+            "n": i + 1,
+            "text": p[:180],
+            "shot": SHOTS[i % len(SHOTS)],
+            "words": _word_count(p),
+            "runtime": _runtime(_word_count(p)),
+        })
+
+    return {
+        "word_count": words,
+        "runtime": _runtime(words),
+        "sentences": len(sentences),
+        "paragraphs": len(paragraphs),
+        "avg_sentence_words": round(words / len(sentences), 1) if sentences else 0,
+        "flags": flags,
+        "hook": {"line": hook[:200], "notes": hook_notes},
+        "beats": beats,
+        "method": "Deterministic script analysis (word/sentence structure). No AI key required.",
+    }
 
 
 # ── Weekly Learning Log / Shared Learning Library ────────────
@@ -113,9 +301,10 @@ class LearningIn(BaseModel):
     do_differently: str = ""
     team_adopt: bool = False
     worth_sharing: bool = False
+    content_id: int | None = None
 
 
-def _entry_out(e: LearningEntry, name: str) -> dict:
+def _entry_out(e: LearningEntry, name: str, content_title: str = "") -> dict:
     return {
         "id": e.id, "user_id": e.user_id, "user_name": name,
         "entry_date": e.entry_date, "title": e.title,
@@ -126,6 +315,7 @@ def _entry_out(e: LearningEntry, name: str) -> dict:
         "why_useful": e.why_useful, "project_target": e.project_target,
         "do_differently": e.do_differently, "team_adopt": e.team_adopt,
         "worth_sharing": e.worth_sharing,
+        "content_id": e.content_id, "content_title": content_title,
     }
 
 
@@ -149,7 +339,15 @@ def list_learning(
     if rtype:
         stmt = stmt.where(LearningEntry.resource_type == rtype)
     stmt = stmt.order_by(LearningEntry.entry_date.desc(), LearningEntry.id.desc()).limit(200)
-    return [_entry_out(e, name or "") for e, name in db.execute(stmt).all()]
+    rows = db.execute(stmt).all()
+    titles = {
+        c.id: c.title
+        for c in db.scalars(select(WorkContent)).all()
+    }
+    return [
+        _entry_out(e, name or "", titles.get(e.content_id or -1, ""))
+        for e, name in rows
+    ]
 
 
 @router.post("/learning", status_code=201)
@@ -157,11 +355,17 @@ def add_learning(body: LearningIn, db: Session = Depends(get_db), user: User = D
     data = body.model_dump()
     if not data["entry_date"]:
         data["entry_date"] = datetime.now(timezone.utc).date().isoformat()
+    if data.get("content_id") and not db.get(WorkContent, data["content_id"]):
+        raise HTTPException(400, "Linked content not found")
     row = LearningEntry(**data, user_id=user.id)
     db.add(row)
     db.commit()
     db.refresh(row)
-    return _entry_out(row, user.full_name or "")
+    title = ""
+    if row.content_id:
+        c = db.get(WorkContent, row.content_id)
+        title = c.title if c else ""
+    return _entry_out(row, user.full_name or "", title)
 
 
 @router.delete("/learning/{eid}", status_code=204)

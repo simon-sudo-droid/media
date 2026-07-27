@@ -16,19 +16,41 @@ import { Badge } from "@/components/ui/badge";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { AccountMenu } from "@/components/account-menu";
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/academy", label: "Learning Hub", icon: GraduationCap },
-  { href: "/workspace", label: "Content Workspace", icon: Briefcase },
-  { href: "/tools", label: "AI Tools", icon: Wand2 },
-  { href: "/reference-channels", label: "Reference Channels", icon: Tv },
-  { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
-  { href: "/checklists", label: "Checklists", icon: ListTodo },
-  { href: "/tracker", label: "Tracker Analytics", icon: BarChart3 },
-  { href: "/industry", label: "Industry Monitoring", icon: Radar },
-  { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
-  { href: "/guide", label: "Guide & Help", icon: LifeBuoy },
+// Grouped so the primary destinations aren't competing with ten siblings.
+const NAV_GROUPS = [
+  {
+    group: "Work",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/workspace", label: "Content Workspace", icon: Briefcase },
+      { href: "/tools", label: "AI Tools", icon: Wand2 },
+      { href: "/checklists", label: "Checklists", icon: ListTodo },
+    ],
+  },
+  {
+    group: "Learn",
+    items: [
+      { href: "/academy", label: "Learning Hub", icon: GraduationCap },
+      { href: "/reference-channels", label: "Reference Channels", icon: Tv },
+      { href: "/approved-videos", label: "Approved Videos", icon: BadgeCheck },
+    ],
+  },
+  {
+    group: "Analyze",
+    items: [
+      { href: "/tracker", label: "Tracker Analytics", icon: BarChart3 },
+      { href: "/industry", label: "Industry Monitoring", icon: Radar },
+    ],
+  },
+  {
+    group: "Support",
+    items: [
+      { href: "/it-issues", label: "IT Technical Issues", icon: Wrench },
+      { href: "/guide", label: "Guide & Help", icon: LifeBuoy },
+    ],
+  },
 ];
+const NAV_COUNT = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
@@ -84,17 +106,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-1.5 overflow-y-auto px-3">
-        {NAV.map((item, i) => (
-          <NavLink key={item.href} {...item} index={i} active={pathname === item.href} />
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-2">
+        {NAV_GROUPS.map((g, gi) => (
+          <div key={g.group}>
+            <div className={`px-3 pb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground/70 ${gi === 0 ? "pt-1" : "pt-4"}`}>
+              {g.group}
+            </div>
+            <div className="space-y-1">
+              {g.items.map((item, i) => (
+                <NavLink key={item.href} {...item} index={gi * 4 + i} active={pathname === item.href} />
+              ))}
+            </div>
+          </div>
         ))}
         {user.is_admin && (
           <>
-            <div className="px-3 pb-2 pt-6 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="px-3 pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
               Admin
             </div>
-            <NavLink href="/admin" label="Admin" icon={Shield} index={NAV.length} active={pathname === "/admin"} />
-            <NavLink href="/leaderboard" label="Leaderboard" icon={Trophy} index={NAV.length + 1} active={pathname === "/leaderboard"} />
+            <div className="space-y-1">
+              <NavLink href="/admin" label="Admin" icon={Shield} index={NAV_COUNT} active={pathname === "/admin"} />
+              <NavLink href="/leaderboard" label="Leaderboard" icon={Trophy} index={NAV_COUNT + 1} active={pathname === "/leaderboard"} />
+            </div>
           </>
         )}
       </nav>

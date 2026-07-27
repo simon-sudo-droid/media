@@ -64,6 +64,12 @@ def on_startup() -> None:
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
+    # Additive column migrations (create_all never alters existing tables).
+    from app.core.migrate import run_migrations
+
+    run_migrations(engine)
+
     from app.seed import run_seed
 
     run_seed()

@@ -26,7 +26,7 @@ from app.models.hub import (
     IndustrySeen,
     IndustryTool,
 )
-from app.models.workspace import WorkContent, LearningEntry
+from app.models.workspace import WorkContent, WorkContentVersion, LearningEntry
 
 __all__ = [
     "User",
@@ -52,5 +52,6 @@ __all__ = [
     "IndustrySeen",
     "IndustryTool",
     "WorkContent",
+    "WorkContentVersion",
     "LearningEntry",
 ]
