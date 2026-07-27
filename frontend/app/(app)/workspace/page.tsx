@@ -185,14 +185,16 @@ function ContentCard({ c, isAdmin, onStatus, onDelete }: {
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Card className="lift">
-      <CardContent className="p-5">
+    // While expanded, opt out of the 3D cursor tilt — skewing a long script
+    // makes it unreadable and can push the layout sideways.
+    <Card className="lift overflow-hidden" {...(open ? { "data-no-tilt": "" } : {})}>
+      <CardContent className="min-w-0 p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold">{c.title}</h3>
+          <h3 className="min-w-0 break-words font-semibold">{c.title}</h3>
           <Badge variant="secondary">{c.content_type}</Badge>
           {c.platform && <Badge variant="outline">{c.platform}</Badge>}
           <Badge variant={STATUS_VARIANT[c.status] || "secondary"}>{c.status}</Badge>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             <select
               className="rounded-lg border border-input bg-card px-2 py-1 text-xs outline-none focus:border-primary"
               value={c.status}
@@ -208,21 +210,29 @@ function ContentCard({ c, isAdmin, onStatus, onDelete }: {
             )}
           </div>
         </div>
-        {c.notes && <p className="mt-2 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Notes: </span>{c.notes}</p>}
+        {c.notes && <p className="mt-2 break-words text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Notes: </span>{c.notes}</p>}
         {c.body && (
-          <div className="mt-3">
+          <div className="mt-3 min-w-0">
             <button onClick={() => setOpen((v) => !v)} className="inline-flex items-center gap-1 text-sm font-medium text-primary">
               {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />} {open ? "Hide script / body" : "View script / body"}
             </button>
-            {open && <p className="mt-2 whitespace-pre-wrap rounded-lg bg-secondary/40 p-4 text-sm leading-relaxed text-foreground/90">{c.body}</p>}
+            {open && (
+              // Long scripts wrap (never overflow horizontally) and scroll
+              // vertically inside the card instead of stretching the page.
+              <div className="mt-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-lg bg-secondary/40 p-4">
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere]">
+                  {c.body}
+                </p>
+              </div>
+            )}
           </div>
         )}
         {c.links.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {c.links.map((l, i) => (
-              <a key={i} href={l} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium transition-colors hover:border-primary/50 hover:text-primary">
-                <Link2 className="h-3 w-3" /> Doc {i + 1} <ExternalLink className="h-3 w-3" />
+              <a key={i} href={l} target="_blank" rel="noopener noreferrer" title={l}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium transition-colors hover:border-primary/50 hover:text-primary">
+                <Link2 className="h-3 w-3 shrink-0" /> Doc {i + 1} <ExternalLink className="h-3 w-3 shrink-0" />
               </a>
             ))}
           </div>
@@ -394,10 +404,10 @@ function EntryCard({ e, showAuthor, onDelete }: { e: Entry; showAuthor?: boolean
   const [open, setOpen] = useState(false);
   const hasK2a = e.why_useful || e.project_target || e.do_differently || e.apply_plan;
   return (
-    <Card className="lift">
-      <CardContent className="p-5">
+    <Card className="lift overflow-hidden" {...(open ? { "data-no-tilt": "" } : {})}>
+      <CardContent className="min-w-0 p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold leading-snug">{e.title}</h3>
+          <h3 className="min-w-0 break-words font-semibold leading-snug">{e.title}</h3>
           <Badge variant="secondary">{e.resource_type}</Badge>
           {e.worth_sharing && <Badge variant="warning">⭐ Team pick</Badge>}
           {e.team_adopt && <Badge variant="success">Adopt</Badge>}
@@ -408,9 +418,9 @@ function EntryCard({ e, showAuthor, onDelete }: { e: Entry; showAuthor?: boolean
             </button>
           )}
         </div>
-        {e.summary && <p className="mt-2 text-sm text-foreground/90"><span className="font-medium text-primary">Learned: </span>{e.summary}</p>}
-        {e.takeaways && <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Takeaways: </span>{e.takeaways}</p>}
-        {e.workflow_impact && <p className="mt-1 text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Workflow impact: </span>{e.workflow_impact}</p>}
+        {e.summary && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-foreground/90"><span className="font-medium text-primary">Learned: </span>{e.summary}</p>}
+        {e.takeaways && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Takeaways: </span>{e.takeaways}</p>}
+        {e.workflow_impact && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground"><span className="font-medium text-foreground/80">Workflow impact: </span>{e.workflow_impact}</p>}
         {e.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {e.tags.map((t) => <span key={t} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">#{t}</span>)}
@@ -422,7 +432,7 @@ function EntryCard({ e, showAuthor, onDelete }: { e: Entry; showAuthor?: boolean
               <Lightbulb className="h-4 w-4" /> Knowledge → Action {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
             {open && (
-              <div className="mt-2 space-y-1 rounded-lg bg-secondary/40 p-4 text-sm">
+              <div className="mt-2 max-h-[60vh] space-y-1 overflow-y-auto overscroll-contain rounded-lg bg-secondary/40 p-4 text-sm [&_p]:whitespace-pre-wrap [&_p]:break-words">
                 {e.why_useful && <p><span className="font-medium text-foreground/80">Why useful: </span><span className="text-muted-foreground">{e.why_useful}</span></p>}
                 {e.project_target && <p><span className="font-medium text-foreground/80">Apply to: </span><span className="text-muted-foreground">{e.project_target}</span></p>}
                 {e.do_differently && <p><span className="font-medium text-foreground/80">Do differently: </span><span className="text-muted-foreground">{e.do_differently}</span></p>}

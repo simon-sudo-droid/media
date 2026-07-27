@@ -36,7 +36,10 @@ export function CursorMotion() {
       if (!ev) return;
       const target = ev.target instanceof Element ? ev.target : null;
 
-      const card = (target?.closest(".lift") as HTMLElement | null) ?? null;
+      // [data-no-tilt] opts a card out (e.g. an expanded panel of long text,
+      // where skewing the whole block in 3D would make it unreadable).
+      let card = (target?.closest(".lift") as HTMLElement | null) ?? null;
+      if (card && card.closest("[data-no-tilt]")) card = null;
       if (card !== tiltEl) resetTilt();
       if (card) {
         tiltEl = card;
