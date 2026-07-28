@@ -6,7 +6,7 @@ import {
   Loader2, Trash2, Search, ChevronDown, ChevronUp, Flame, CheckCircle2,
   Lightbulb, Link2, Wrench, Pencil, Save, X, History, Copy, Check, Clock,
   User as UserIcon, CalendarDays, Sparkles, LayoutList, Columns3, RotateCcw,
-  AlertTriangle, Filter,
+  AlertTriangle, Filter, MessageSquare, Activity, Send, Scissors, Video,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -21,8 +21,13 @@ type Content = {
   id: number; category: string; title: string; content_type: string; platform: string;
   body: string; status: string; notes: string; links: DocLink[]; owner: string;
   due_date: string; word_count: number; runtime: string; updated_at: string;
-  version_count?: number; techniques?: Technique[];
+  created_at: string; readability: number; readability_label: string; completion: number;
+  editing_by?: string; editing_by_id?: number;
+  version_count?: number; comment_count?: number; techniques?: Technique[];
 };
+type Editor = { id: number; name: string; email: string; is_admin: boolean };
+type Activity = { id: number; action: string; detail: string; user: string; at: string };
+type Comment = { id: number; body: string; user: string; user_id: number; parent_id: number | null; resolved: boolean; at: string };
 type Entry = {
   id: number; user_id: number; user_name: string; entry_date: string; title: string;
   resource_type: string; url: string; summary: string; takeaways: string;
@@ -39,9 +44,23 @@ type Version = { id: number; edited_at: string; edited_by: string; word_count: n
 type Analysis = {
   word_count: number; runtime: string; sentences: number; paragraphs: number;
   avg_sentence_words: number; method: string;
+  readability: { score: number; label: string; note: string };
+  repetition: { phrases: { phrase: string; count: number }[]; overused: { word: string; count: number; pct: number }[] };
+  cta: { present: boolean; found: string[]; suggestion: string; note: string };
+  engagement: { score: number; band: string; reasons: string[]; note: string };
+  duration: { target: number; target_label?: string; over_by: number; over_at?: number | null; note: string;
+              sections: { n: number; words: number; cumulative: string; over: boolean; text: string }[] };
   flags: { kind: string; detail: string; sample: string }[];
   hook: { line: string; notes: string[] };
   beats: { n: number; text: string; shot: string; words: number; runtime: string }[];
+};
+type Tightened = {
+  action: string; text: string; before_words: number; after_words: number;
+  saved_pct: number; before_runtime: string; after_runtime: string; method: string;
+};
+type BrollIdeas = {
+  action: string; method: string;
+  ideas: { keyword: string; shot: string; idea: string; pexels: string; pixabay: string }[];
 };
 
 const TABS = [
@@ -59,6 +78,10 @@ const STATUS_VARIANT: Record<string, "secondary" | "warning" | "default" | "succ
 const CONTENT_TYPES = ["Script", "LinkedIn post", "Instagram content", "Facebook content", "Article", "Reel script", "Supporting asset"];
 const RESOURCE_TYPES = ["Video", "Article", "Course", "Blog", "Tool", "Prompt", "Podcast", "Other"];
 const inputCls = "w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary";
+const ACTION_VARIANT: Record<string, "default" | "secondary" | "success" | "warning"> = {
+  created: "success", edited: "default", status: "warning", owner: "secondary",
+  ai: "default", restore: "warning", comment: "secondary",
+};
 
 /* Natural sort so "Month 2" precedes "Month 10". */
 const natural = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
@@ -104,8 +127,10 @@ function ContentTab() {
   const [view, setView] = useState<"list" | "board">("list");
   const [fStatus, setFStatus] = useState("");
   const [fOwner, setFOwner] = useState("");
+  const [fSince, setFSince] = useState("");
   const [sort, setSort] = useState("updated");
   const [q, setQ] = useState("");
+  const [editors, setEditors] = useState<Editor[]>([]);
   const [form, setForm] = useState({
     category: "leadership", title: "", content_type: "Script", platform: "",
     body: "", status: "Draft", notes: "", links: "", owner: "", due_date: "",
@@ -115,6 +140,7 @@ function ContentTab() {
     api<Content[]>("/workspace/content").then(setItems).catch(() => {}).finally(() => setLoading(false));
   }, []);
   useEffect(load, [load]);
+  useEffect(() => { api<Editor[]>("/workspace/editors").then(setEditors).catch(() => {}); }, []);
 
   async function save() {
     if (!form.title.trim()) return;
@@ -137,19 +163,24 @@ function ContentTab() {
   }
 
   const owners = useMemo(
-    () => [...new Set(items.map((i) => i.owner).filter(Boolean))].sort(natural),
-    [items],
+    () => [...new Set([...items.map((i) => i.owner), ...editors.map((e) => e.name)].filter(Boolean))].sort(natural),
+    [items, editors],
   );
 
   const visible = useMemo(() => {
     let rows = items;
     if (fStatus) rows = rows.filter((r) => r.status === fStatus);
     if (fOwner) rows = rows.filter((r) => r.owner === fOwner);
+    if (fSince) rows = rows.filter((r) => (r.created_at || "").slice(0, 10) >= fSince);
     if (q.trim()) {
       const n = q.trim().toLowerCase();
       rows = rows.filter((r) =>
         r.title.toLowerCase().includes(n) || r.body.toLowerCase().includes(n) ||
-        r.notes.toLowerCase().includes(n) || (r.platform || "").toLowerCase().includes(n));
+        r.notes.toLowerCase().includes(n) || (r.platform || "").toLowerCase().includes(n) ||
+        (r.owner || "").toLowerCase().includes(n) ||
+        (r.content_type || "").toLowerCase().includes(n) ||
+        (r.techniques || []).some((t) =>
+          t.title.toLowerCase().includes(n) || t.tags.some((g) => g.toLowerCase().includes(n))));
     }
     const sorted = [...rows];
     if (sort === "title") sorted.sort((a, b) => natural(a.title, b.title));
@@ -157,7 +188,7 @@ function ContentTab() {
     else if (sort === "status") sorted.sort((a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status));
     else sorted.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
     return sorted;
-  }, [items, fStatus, fOwner, q, sort]);
+  }, [items, fStatus, fOwner, fSince, q, sort]);
 
   const groups = [
     { key: "leadership", title: "Monthly Leadership Content", hint: "LinkedIn posts, Instagram & Facebook content, scripts and supporting assets." },
@@ -170,7 +201,7 @@ function ContentTab() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title, script, notes…"
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title, script, notes, owner, type, tags…"
             className="w-full rounded-lg border border-input bg-card py-2 pl-10 pr-3 text-sm outline-none focus:border-primary" />
         </div>
         <select className={inputCls + " w-auto"} value={fStatus} onChange={(e) => setFStatus(e.target.value)} title="Filter by status">
@@ -183,6 +214,7 @@ function ContentTab() {
             {owners.map((o) => <option key={o}>{o}</option>)}
           </select>
         )}
+        <input type="date" className={inputCls + " w-auto"} value={fSince} onChange={(e) => setFSince(e.target.value)} title="Added on or after" />
         <select className={inputCls + " w-auto"} value={sort} onChange={(e) => setSort(e.target.value)} title="Sort">
           <option value="updated">Recently updated</option>
           <option value="due">Due date</option>
@@ -204,10 +236,10 @@ function ContentTab() {
         </Button>
       </div>
 
-      {(fStatus || fOwner || q) && (
+      {(fStatus || fOwner || fSince || q) && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Filter className="h-3 w-3" /> Showing {visible.length} of {items.length}
-          <button onClick={() => { setFStatus(""); setFOwner(""); setQ(""); }} className="ml-1 font-medium text-primary hover:underline">Clear</button>
+          <button onClick={() => { setFStatus(""); setFOwner(""); setFSince(""); setQ(""); }} className="ml-1 font-medium text-primary hover:underline">Clear</button>
         </p>
       )}
 
@@ -225,7 +257,14 @@ function ContentTab() {
           <select className={inputCls} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
             {STATUSES.map((s) => <option key={s}>{s}</option>)}
           </select>
-          <input className={inputCls} placeholder="Owner / editor" value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} />
+          {user?.is_admin ? (
+            <select className={inputCls} value={form.owner} onChange={(e) => setForm({ ...form, owner: e.target.value })} title="Assign owner (admin only)">
+              <option value="">Assign owner…</option>
+              {editors.map((ed) => <option key={ed.id} value={ed.name}>{ed.name}</option>)}
+            </select>
+          ) : (
+            <input className={inputCls + " cursor-not-allowed opacity-60"} value="Owner assigned by admin" disabled title="Only an admin can assign the owner" />
+          )}
           <input className={inputCls} type="date" title="Due date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
           <textarea className={inputCls + " min-h-[120px] sm:col-span-2"} placeholder="Script / body…" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
           <textarea className={inputCls + " min-h-[60px]"} placeholder="Notes for the editor…" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
@@ -299,7 +338,7 @@ function ContentTab() {
             )}
             <div className="space-y-3">
               {rows.map((c) => (
-                <ContentCard key={c.id} c={c} isAdmin={!!user?.is_admin} onPatch={patch} onDelete={remove} />
+                <ContentCard key={c.id} c={c} isAdmin={!!user?.is_admin} editors={editors} onPatch={patch} onDelete={remove} />
               ))}
             </div>
           </section>
@@ -309,8 +348,8 @@ function ContentTab() {
   );
 }
 
-function ContentCard({ c, isAdmin, onPatch, onDelete }: {
-  c: Content; isAdmin: boolean;
+function ContentCard({ c, isAdmin, editors, onPatch, onDelete }: {
+  c: Content; isAdmin: boolean; editors: Editor[];
   onPatch: (c: Content, data: Partial<Content>) => Promise<Content>;
   onDelete: (c: Content) => void;
 }) {
@@ -325,7 +364,20 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
   const [versions, setVersions] = useState<Version[]>([]);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [lockedBy, setLockedBy] = useState("");
+  const [selection, setSelection] = useState("");
+  const [assistBusy, setAssistBusy] = useState("");
+  const [tightened, setTightened] = useState<Tightened | null>(null);
+  const [broll, setBroll] = useState<BrollIdeas | null>(null);
   const autosave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeat = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   const words = editing
     ? draft.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length
@@ -351,15 +403,92 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
   }
   useEffect(() => () => { if (autosave.current) clearTimeout(autosave.current); }, []);
 
+  // Soft lock: claim the script while editing, heartbeat every 60s, release
+  // on exit so a stale tab never blocks the other editor for long.
+  async function startEditing() {
+    try {
+      const r = await api<{ locked: boolean; by: string }>(`/workspace/content/${c.id}/editing`, { method: "POST" });
+      if (r.locked) { setLockedBy(r.by); return; }
+    } catch {}
+    setLockedBy("");
+    setDraft(c.body);
+    setEditing(true);
+    heartbeat.current = setInterval(() => {
+      api(`/workspace/content/${c.id}/editing`, { method: "POST" }).catch(() => {});
+    }, 60000);
+  }
+  function stopEditing() {
+    if (heartbeat.current) { clearInterval(heartbeat.current); heartbeat.current = null; }
+    api(`/workspace/content/${c.id}/editing`, { method: "DELETE" }).catch(() => {});
+  }
+  useEffect(() => () => { if (heartbeat.current) clearInterval(heartbeat.current); }, []);
+
   async function saveNow() {
     if (autosave.current) clearTimeout(autosave.current);
     if (draft !== c.body) await persist(draft);
+    stopEditing();
     setEditing(false);
   }
   function cancelEdit() {
     if (autosave.current) clearTimeout(autosave.current);
     setDraft(c.body);
+    stopEditing();
     setEditing(false);
+  }
+
+  async function loadActivity() {
+    setShowActivity((v) => !v);
+    if (!activity.length) {
+      try { setActivity(await api<Activity[]>(`/workspace/content/${c.id}/activity`)); } catch {}
+    }
+  }
+  async function loadComments() {
+    setShowComments((v) => !v);
+    try { setComments(await api<Comment[]>(`/workspace/content/${c.id}/comments`)); } catch {}
+  }
+  async function postComment() {
+    if (!newComment.trim()) return;
+    await api(`/workspace/content/${c.id}/comments`, {
+      method: "POST", body: { body: newComment, parent_id: replyTo },
+    });
+    setNewComment(""); setReplyTo(null);
+    setComments(await api<Comment[]>(`/workspace/content/${c.id}/comments`));
+  }
+  async function toggleResolve(cm: Comment) {
+    await api(`/workspace/comments/${cm.id}`, { method: "PATCH" });
+    setComments(await api<Comment[]>(`/workspace/content/${c.id}/comments`));
+  }
+  async function removeComment(cm: Comment) {
+    await api(`/workspace/comments/${cm.id}`, { method: "DELETE" });
+    setComments(await api<Comment[]>(`/workspace/content/${c.id}/comments`));
+  }
+
+  // Highlight-to-act: capture the selected passage inside this card.
+  function captureSelection() {
+    const s = window.getSelection?.();
+    const text = s ? s.toString().trim() : "";
+    if (text && bodyRef.current && s && s.anchorNode && bodyRef.current.contains(s.anchorNode)) {
+      setSelection(text);
+    }
+  }
+  async function assist(kind: "tighten" | "broll") {
+    if (!selection) return;
+    setAssistBusy(kind);
+    try {
+      if (kind === "tighten") {
+        setBroll(null);
+        setTightened(await api<Tightened>(`/workspace/content/${c.id}/tighten`, { method: "POST", body: { text: selection, ratio: 0.3 } }));
+      } else {
+        setTightened(null);
+        setBroll(await api<BrollIdeas>(`/workspace/content/${c.id}/broll`, { method: "POST", body: { text: selection } }));
+      }
+    } finally { setAssistBusy(""); }
+  }
+  async function applyTightened() {
+    if (!tightened) return;
+    const next = c.body.replace(selection, tightened.text);
+    await persist(next);
+    setDraft(next); setTightened(null); setSelection("");
   }
   async function copyScript() {
     try {
@@ -396,7 +525,18 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
           <Badge variant="secondary">{c.content_type}</Badge>
           {c.platform && <Badge variant="outline">{c.platform}</Badge>}
           <StatusPill status={c.status} onChange={(s) => onPatch(c, { status: s })} />
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
+            {c.editing_by && (
+              <Badge variant="warning" className="gap-1"><Pencil className="h-3 w-3" /> {c.editing_by} editing</Badge>
+            )}
+            <button onClick={loadComments} title="Comments"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              <MessageSquare className="h-3.5 w-3.5" /> {c.comment_count || 0}
+            </button>
+            <button onClick={loadActivity} title="Activity timeline"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              <Activity className="h-3.5 w-3.5" />
+            </button>
             {(c.version_count ?? 0) > 0 && (
               <button onClick={loadHistory} title="Version history"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -419,11 +559,25 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
           </div>
         </div>
 
-        {/* Meta strip: owner, due date, length */}
+        {/* Meta strip: owner, due date, length, readability, completion */}
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <UserIcon className="h-3 w-3" />
-            <InlineText value={c.owner} placeholder="Unassigned" onSave={(v) => onPatch(c, { owner: v })} />
+            {isAdmin ? (
+              <select
+                value={c.owner}
+                onChange={(e) => onPatch(c, { owner: e.target.value })}
+                title="Assign owner (admin only)"
+                className="rounded border border-input bg-card px-1.5 py-0.5 text-xs outline-none focus:border-primary"
+              >
+                <option value="">Unassigned</option>
+                {editors.map((ed) => <option key={ed.id} value={ed.name}>{ed.name}</option>)}
+              </select>
+            ) : (
+              <span className={c.owner ? "font-medium text-foreground/80" : "italic"} title="Only an admin can assign the owner">
+                {c.owner || "Unassigned"}
+              </span>
+            )}
           </span>
           <span className={`inline-flex items-center gap-1 ${overdue ? "font-medium text-rose-400" : ""}`}>
             <CalendarDays className="h-3 w-3" />
@@ -431,8 +585,17 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
             {overdue && " (overdue)"}
           </span>
           {c.word_count > 0 && (
-            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {c.word_count} words · ~{c.runtime}</span>
+            <>
+              <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {c.word_count} words · ~{c.runtime}</span>
+              <span title="Flesch Reading Ease">Readability {c.readability} ({c.readability_label})</span>
+            </>
           )}
+          <span className="inline-flex items-center gap-1.5" title="Progress through the pipeline">
+            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-secondary">
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${c.completion}%` }} />
+            </span>
+            {c.completion}%
+          </span>
           {c.updated_at && <span>Updated {c.updated_at.slice(0, 10)}</span>}
         </div>
 
@@ -466,7 +629,7 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
               </button>
               {open && !editing && (
                 <>
-                  <button onClick={() => { setDraft(c.body); setEditing(true); }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                  <button onClick={startEditing} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </button>
                   <button onClick={copyScript} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -492,10 +655,74 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
               )}
             </div>
 
+            {lockedBy && (
+              <p className="mt-2 flex items-center gap-1.5 rounded-lg border border-amber-400/40 bg-amber-500/10 p-2.5 text-xs text-amber-500">
+                <AlertTriangle className="h-3.5 w-3.5" /> {lockedBy} has this script open — avoid editing at the same time.
+                <button onClick={() => setLockedBy("")} className="ml-auto text-muted-foreground hover:text-foreground">Dismiss</button>
+              </p>
+            )}
+
             {open && !editing && (
-              <div className="mt-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-lg bg-secondary/40 p-4">
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere]">{c.body}</p>
-              </div>
+              <>
+                <div ref={bodyRef} onMouseUp={captureSelection} onKeyUp={captureSelection}
+                  className="mt-2 max-h-[65vh] overflow-y-auto overscroll-contain rounded-lg bg-secondary/40 p-4">
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere]">{c.body}</p>
+                </div>
+
+                {/* Highlight-to-act assistant */}
+                {selection && (
+                  <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-semibold">Selection ({selection.split(/\s+/).length} words)</span>
+                      <button onClick={() => { setSelection(""); setTightened(null); setBroll(null); }} className="ml-auto text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 break-words text-xs italic text-muted-foreground">“{selection.slice(0, 220)}”</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" className="h-7 gap-1 px-2.5" disabled={!!assistBusy} onClick={() => assist("tighten")}>
+                        {assistBusy === "tighten" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />} Shorten ~30%
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 gap-1 px-2.5" disabled={!!assistBusy} onClick={() => assist("broll")}>
+                        {assistBusy === "broll" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Video className="h-3.5 w-3.5" />} Suggest B-roll
+                      </Button>
+                    </div>
+
+                    {tightened && (
+                      <div className="mt-3 rounded-md bg-card p-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <Badge variant="success">{tightened.saved_pct}% shorter</Badge>
+                          <span className="text-muted-foreground">{tightened.before_words} → {tightened.after_words} words · {tightened.before_runtime} → {tightened.after_runtime}</span>
+                        </div>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm">{tightened.text}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Button size="sm" variant="gradient" className="h-7 px-2.5" onClick={applyTightened}>Replace in script</Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2.5" onClick={() => navigator.clipboard.writeText(tightened.text).catch(() => {})}>Copy</Button>
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">{tightened.method}</p>
+                      </div>
+                    )}
+
+                    {broll && (
+                      <div className="mt-3 space-y-2">
+                        {broll.ideas.map((b) => (
+                          <div key={b.keyword} className="rounded-md bg-card p-2.5 text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="secondary">{b.keyword}</Badge>
+                              <span className="text-xs font-medium">{b.shot}</span>
+                            </div>
+                            <p className="mt-1 break-words text-xs text-muted-foreground">{b.idea}</p>
+                            <div className="mt-1 flex gap-3 text-xs">
+                              <a href={b.pexels} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Pexels ↗</a>
+                              <a href={b.pixabay} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Pixabay ↗</a>
+                            </div>
+                          </div>
+                        ))}
+                        <p className="text-[11px] text-muted-foreground">{broll.method}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             {editing && (
               <textarea
@@ -514,6 +741,76 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
                   <span className="text-muted-foreground">{analysis.word_count} words · ~{analysis.runtime} · {analysis.sentences} sentences · avg {analysis.avg_sentence_words} w/sentence</span>
                   <button onClick={() => setAnalysis(null)} className="ml-auto text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
                 </div>
+
+                {/* Scores */}
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-md bg-card p-3">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Engagement</div>
+                    <div className="mt-0.5 flex items-baseline gap-1.5">
+                      <span className="text-xl font-bold">{analysis.engagement.score}</span>
+                      <Badge variant={analysis.engagement.score >= 70 ? "success" : analysis.engagement.score >= 50 ? "warning" : "secondary"}>{analysis.engagement.band}</Badge>
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-card p-3">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Readability</div>
+                    <div className="mt-0.5 flex items-baseline gap-1.5">
+                      <span className="text-xl font-bold">{analysis.readability.score}</span>
+                      <Badge variant="secondary">{analysis.readability.label}</Badge>
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-card p-3">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Call to action</div>
+                    <div className="mt-0.5">
+                      <Badge variant={analysis.cta.present ? "success" : "warning"}>{analysis.cta.present ? "Present" : "Missing"}</Badge>
+                    </div>
+                  </div>
+                </div>
+                <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                  {analysis.engagement.reasons.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground">{r}</li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-muted-foreground">{analysis.readability.note}</p>
+                <p className="mt-1 text-xs text-muted-foreground"><span className="font-medium text-foreground/80">CTA: </span>{analysis.cta.note} {analysis.cta.suggestion}</p>
+
+                {/* Duration vs target */}
+                {analysis.duration.target > 0 && (
+                  <div className="mt-3 rounded-md bg-card p-3">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-medium">Duration target {analysis.duration.target_label}</span>
+                      {analysis.duration.over_by > 0
+                        ? <Badge variant="warning">Over by {analysis.duration.over_by}s</Badge>
+                        : <Badge variant="success">Fits</Badge>}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{analysis.duration.note}</p>
+                    <div className="mt-2 space-y-1">
+                      {analysis.duration.sections.map((s) => (
+                        <div key={s.n} className={`flex items-center gap-2 rounded px-2 py-1 text-xs ${s.over ? "bg-rose-500/10 text-rose-400" : "bg-secondary/50 text-muted-foreground"}`}>
+                          <span className="font-semibold">{s.n}</span>
+                          <span className="shrink-0">{s.cumulative}</span>
+                          <span className="truncate">{s.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Repetition */}
+                {(analysis.repetition.phrases.length > 0 || analysis.repetition.overused.length > 0) && (
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Repetition</div>
+                    {analysis.repetition.phrases.length > 0 && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Repeated phrases: {analysis.repetition.phrases.map((p) => `“${p.phrase}” ×${p.count}`).join(", ")}
+                      </p>
+                    )}
+                    {analysis.repetition.overused.length > 0 && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Overused words: {analysis.repetition.overused.map((o) => `${o.word} ×${o.count} (${o.pct}%)`).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="mt-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hook</div>
                   {analysis.hook.line && <p className="mt-1 break-words text-sm italic text-foreground/90">“{analysis.hook.line}”</p>}
@@ -561,6 +858,81 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
           </div>
         )}
 
+        {/* Activity timeline */}
+        {showActivity && (
+          <div className="mt-3 rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Activity</span>
+              <button onClick={() => setShowActivity(false)} className="ml-auto text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            {activity.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No activity recorded yet.</p>}
+            <ol className="mt-2 space-y-2">
+              {activity.map((a) => (
+                <li key={a.id} className="flex items-start gap-2 text-sm">
+                  <Badge variant={ACTION_VARIANT[a.action] || "secondary"} className="shrink-0 capitalize">{a.action}</Badge>
+                  <span className="min-w-0 break-words">
+                    <span className="text-foreground/90">{a.detail}</span>
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      {a.user ? `— ${a.user}` : ""} {a.at.replace("T", " ").slice(0, 16)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
+        {/* Threaded comments with @mentions */}
+        {showComments && (
+          <div className="mt-3 rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Review comments</span>
+              <button onClick={() => setShowComments(false)} className="ml-auto text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="mt-2 space-y-2">
+              {comments.filter((x) => !x.parent_id).map((cm) => (
+                <div key={cm.id} className={`rounded-md bg-card p-3 ${cm.resolved ? "opacity-60" : ""}`}>
+                  <CommentRow cm={cm} onReply={() => setReplyTo(cm.id)} onResolve={() => toggleResolve(cm)} onDelete={() => removeComment(cm)} />
+                  {comments.filter((r) => r.parent_id === cm.id).map((r) => (
+                    <div key={r.id} className="ml-4 mt-2 border-l border-border pl-3">
+                      <CommentRow cm={r} onResolve={() => toggleResolve(r)} onDelete={() => removeComment(r)} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet — feedback here stays with the script instead of scattering into chat.</p>}
+            </div>
+
+            <div className="mt-3">
+              {replyTo && (
+                <p className="mb-1 text-xs text-muted-foreground">
+                  Replying to #{replyTo} <button onClick={() => setReplyTo(null)} className="font-medium text-primary hover:underline">cancel</button>
+                </p>
+              )}
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment… use @name to notify someone"
+                className="min-h-[64px] w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {editors.slice(0, 4).map((ed) => (
+                  <button key={ed.id} onClick={() => setNewComment((v) => `${v}${v && !v.endsWith(" ") ? " " : ""}@${ed.name} `)}
+                    className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">
+                    @{ed.name}
+                  </button>
+                ))}
+                <Button size="sm" variant="gradient" className="ml-auto h-7 gap-1 px-2.5" disabled={!newComment.trim()} onClick={postComment}>
+                  <Send className="h-3.5 w-3.5" /> Comment
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Version history */}
         {showHistory && (
           <div className="mt-3 rounded-lg border border-border bg-secondary/30 p-4">
@@ -603,6 +975,32 @@ function ContentCard({ c, isAdmin, onPatch, onDelete }: {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function CommentRow({ cm, onReply, onResolve, onDelete }: {
+  cm: Comment; onReply?: () => void; onResolve: () => void; onDelete: () => void;
+}) {
+  // Highlight @mentions inside the body.
+  const parts = cm.body.split(/(@[A-Za-z][A-Za-z .'-]{1,40})/g);
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-foreground">{cm.user}</span>
+        <span className="text-muted-foreground">{cm.at.replace("T", " ").slice(0, 16)}</span>
+        {cm.resolved && <Badge variant="success">Resolved</Badge>}
+        <span className="ml-auto flex items-center gap-2">
+          {onReply && <button onClick={onReply} className="text-muted-foreground hover:text-foreground">Reply</button>}
+          <button onClick={onResolve} className="text-muted-foreground hover:text-foreground">{cm.resolved ? "Reopen" : "Resolve"}</button>
+          <button onClick={onDelete} className="text-muted-foreground hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
+        </span>
+      </div>
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm">
+        {parts.map((p, i) => p.startsWith("@")
+          ? <span key={i} className="font-medium text-primary">{p}</span>
+          : <span key={i}>{p}</span>)}
+      </p>
+    </div>
   );
 }
 

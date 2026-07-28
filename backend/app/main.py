@@ -11,7 +11,7 @@ from app.core.database import Base, engine
 from app.core.ratelimit import limiter
 from app.api.routes import (
     admin, ai, auth, challenges, checklists, content, dashboard, quizzes,
-    tracker, glossary, help, industry, workspace,
+    tracker, glossary, help, industry, workspace, notifications,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -94,3 +94,4 @@ app.include_router(glossary.router)
 app.include_router(help.router)
 app.include_router(industry.router)
 app.include_router(workspace.router)
+app.include_router(notifications.router)

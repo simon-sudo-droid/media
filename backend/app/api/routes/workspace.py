@@ -12,12 +12,48 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import LearningEntry, User, WorkContent, WorkContentVersion
+from app.models import (
+    LearningEntry, Notification, User, WorkContent, WorkContentActivity,
+    WorkContentComment, WorkContentVersion,
+)
+from app.services import script_analysis as sa
 
 router = APIRouter(prefix="/workspace", tags=["workspace"])
 
 # Talking-head narration pace — used for the runtime estimate on scripts.
 WORDS_PER_MINUTE = 150
+# A soft edit lock older than this is treated as abandoned.
+LOCK_TTL = timedelta(minutes=3)
+
+
+# ── Activity + notification helpers ──────────────────────────
+def _log(db: Session, cid: int, user: User, action: str, detail: str = "") -> None:
+    db.add(WorkContentActivity(content_id=cid, user_id=user.id, action=action, detail=detail))
+
+
+def _notify(db: Session, user_ids: list[int], kind: str, title: str,
+            body: str = "", content_id: int | None = None, exclude: int | None = None) -> None:
+    for uid in {u for u in user_ids if u and u != exclude}:
+        db.add(Notification(user_id=uid, kind=kind, title=title, body=body, content_id=content_id))
+
+
+def _interested_users(db: Session, c: WorkContent) -> list[int]:
+    """Everyone who should hear about a change: creator, assigned owner,
+    admins, and anyone who has commented on it."""
+    ids: list[int] = []
+    if c.created_by:
+        ids.append(c.created_by)
+    if c.owner:
+        u = db.scalar(select(User).where(User.full_name == c.owner))
+        if u:
+            ids.append(u.id)
+    ids += [r for r in db.scalars(
+        select(WorkContentComment.user_id).where(WorkContentComment.content_id == c.id)
+    ).all()]
+    for u in db.scalars(select(User)).all():
+        if u.is_admin:
+            ids.append(u.id)
+    return ids
 
 STATUSES = ["Draft", "Ready for Edit", "In Editing", "In Review", "Published"]
 
@@ -95,6 +131,10 @@ def _runtime(words: int) -> str:
 
 def _content_out(c: WorkContent, db: Session | None = None) -> dict:
     words = _word_count(c.body)
+    read = sa.readability(
+        c.body or "", words,
+        max(1, len([s for s in re.split(r"(?<=[.!?])\s+", c.body or "") if s.strip()])),
+    )
     out = {
         "id": c.id, "category": c.category, "title": c.title,
         "content_type": c.content_type, "platform": c.platform, "body": c.body,
@@ -102,11 +142,29 @@ def _content_out(c: WorkContent, db: Session | None = None) -> dict:
         "links": [_doc_name(l) for l in (c.links or "").splitlines() if l.strip()],
         "owner": c.owner or "", "due_date": c.due_date or "",
         "word_count": words, "runtime": _runtime(words),
+        "readability": read["score"], "readability_label": read["label"],
+        # Completion % across the pipeline stages.
+        "completion": round(STATUSES.index(c.status) / (len(STATUSES) - 1) * 100)
+        if c.status in STATUSES else 0,
         "updated_at": c.updated_at.isoformat() if c.updated_at else "",
+        "created_at": c.created_at.isoformat() if c.created_at else "",
     }
+    # Soft edit lock — only report it while the heartbeat is fresh.
+    out["editing_by"] = ""
+    if c.editing_by and c.editing_at:
+        at = c.editing_at if c.editing_at.tzinfo else c.editing_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - at < LOCK_TTL:
+            if db is not None:
+                u = db.get(User, c.editing_by)
+                out["editing_by"] = (u.full_name or u.email) if u else ""
+            out["editing_by_id"] = c.editing_by
     if db is not None:
         out["version_count"] = len(db.scalars(
             select(WorkContentVersion.id).where(WorkContentVersion.content_id == c.id)
+        ).all())
+        out["comment_count"] = len(db.scalars(
+            select(WorkContentComment.id)
+            .where(WorkContentComment.content_id == c.id, WorkContentComment.resolved == False)  # noqa: E712
         ).all())
         # Techniques logged against this content (learning → doing link).
         rows = db.execute(
@@ -134,10 +192,16 @@ def list_content(db: Session = Depends(get_db), user: User = Depends(get_current
 def add_content(body: ContentIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if body.category not in ("leadership", "case_study"):
         raise HTTPException(400, "category must be leadership or case_study")
-    row = WorkContent(**body.model_dump(), created_by=user.id)
+    data = body.model_dump()
+    # Only admins assign ownership (accountability stays with the admin).
+    if data.get("owner") and not user.is_admin:
+        data["owner"] = ""
+    row = WorkContent(**data, created_by=user.id)
     db.add(row)
     db.commit()
     db.refresh(row)
+    _log(db, row.id, user, "created", f"Uploaded “{row.title}”")
+    db.commit()
     return _content_out(row, db)
 
 
@@ -147,15 +211,167 @@ def update_content(cid: int, body: ContentPatch, db: Session = Depends(get_db), 
     if not row:
         raise HTTPException(404, "Not found")
     data = body.model_dump(exclude_none=True)
+    if "owner" in data and not user.is_admin:
+        raise HTTPException(403, "Only an admin can assign the owner")
+
+    watchers = _interested_users(db, row)
+    who = user.full_name or user.email
+
     # Snapshot the previous script before overwriting it, so a bad edit is
     # always recoverable from version history.
     if "body" in data and data["body"] != row.body:
         db.add(WorkContentVersion(content_id=row.id, body=row.body or "", edited_by=user.id))
+        _log(db, row.id, user, "edited",
+             f"Script edited ({_word_count(row.body)} → {_word_count(data['body'])} words)")
+        _notify(db, watchers, "edit", f"Script edited: {row.title}",
+                f"{who} edited the script.", row.id, exclude=user.id)
+    if "status" in data and data["status"] != row.status:
+        _log(db, row.id, user, "status", f"{row.status} → {data['status']}")
+        _notify(db, watchers, "status", f"{row.title} → {data['status']}",
+                f"{who} moved it from {row.status}.", row.id, exclude=user.id)
+    if "owner" in data and data["owner"] != row.owner:
+        _log(db, row.id, user, "owner", f"Assigned to {data['owner'] or 'nobody'}")
+        target = db.scalar(select(User).where(User.full_name == data["owner"])) if data["owner"] else None
+        if target:
+            _notify(db, [target.id], "assign", f"You were assigned: {row.title}",
+                    f"{who} assigned this script to you.", row.id, exclude=user.id)
+
     for k, v in data.items():
         setattr(row, k, v)
     db.commit()
     db.refresh(row)
     return _content_out(row, db)
+
+
+# ── Team / ownership ─────────────────────────────────────────
+@router.get("/editors")
+def list_editors(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Assignable people (everyone with an account), for the Owner dropdown."""
+    rows = db.scalars(select(User).order_by(User.full_name)).all()
+    return [
+        {"id": u.id, "name": u.full_name or u.email, "email": u.email, "is_admin": u.is_admin}
+        for u in rows
+    ]
+
+
+# ── Soft edit lock (collaboration indicator) ─────────────────
+@router.post("/content/{cid}/editing")
+def heartbeat_editing(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    row = db.get(WorkContent, cid)
+    if not row:
+        raise HTTPException(404, "Not found")
+    holder = ""
+    if row.editing_by and row.editing_by != user.id and row.editing_at:
+        at = row.editing_at if row.editing_at.tzinfo else row.editing_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) - at < LOCK_TTL:
+            u = db.get(User, row.editing_by)
+            holder = (u.full_name or u.email) if u else "another editor"
+            return {"locked": True, "by": holder}
+    row.editing_by = user.id
+    row.editing_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"locked": False, "by": ""}
+
+
+@router.delete("/content/{cid}/editing", status_code=204)
+def release_editing(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    row = db.get(WorkContent, cid)
+    if row and row.editing_by == user.id:
+        row.editing_by = None
+        row.editing_at = None
+        db.commit()
+
+
+# ── Activity timeline ────────────────────────────────────────
+@router.get("/content/{cid}/activity")
+def content_activity(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = db.execute(
+        select(WorkContentActivity, User.full_name)
+        .outerjoin(User, User.id == WorkContentActivity.user_id)
+        .where(WorkContentActivity.content_id == cid)
+        .order_by(WorkContentActivity.id.desc())
+        .limit(60)
+    ).all()
+    return [
+        {"id": a.id, "action": a.action, "detail": a.detail,
+         "user": name or "", "at": a.created_at.isoformat() if a.created_at else ""}
+        for a, name in rows
+    ]
+
+
+# ── Threaded comments with @mentions ─────────────────────────
+class CommentIn(BaseModel):
+    body: str = Field(min_length=1)
+    parent_id: int | None = None
+
+
+@router.get("/content/{cid}/comments")
+def list_comments(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = db.execute(
+        select(WorkContentComment, User.full_name)
+        .join(User, User.id == WorkContentComment.user_id)
+        .where(WorkContentComment.content_id == cid)
+        .order_by(WorkContentComment.id)
+    ).all()
+    return [
+        {"id": c.id, "body": c.body, "user": name or "", "user_id": c.user_id,
+         "parent_id": c.parent_id, "resolved": c.resolved,
+         "at": c.created_at.isoformat() if c.created_at else ""}
+        for c, name in rows
+    ]
+
+
+@router.post("/content/{cid}/comments", status_code=201)
+def add_comment(cid: int, body: CommentIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    row = db.get(WorkContent, cid)
+    if not row:
+        raise HTTPException(404, "Not found")
+    c = WorkContentComment(content_id=cid, user_id=user.id, parent_id=body.parent_id, body=body.body.strip())
+    db.add(c)
+    who = user.full_name or user.email
+    _log(db, cid, user, "comment", body.body.strip()[:120])
+
+    # @mentions → direct notification; everyone else watching gets the thread update.
+    names = re.findall(r"@([A-Za-z][A-Za-z .'-]{1,40})", body.body)
+    mentioned: list[int] = []
+    if names:
+        for u in db.scalars(select(User)).all():
+            label = (u.full_name or u.email).lower()
+            if any(label.startswith(n.strip().lower()) or n.strip().lower() in label for n in names):
+                mentioned.append(u.id)
+    if mentioned:
+        _notify(db, mentioned, "mention", f"{who} mentioned you on {row.title}",
+                body.body.strip()[:180], cid, exclude=user.id)
+    _notify(db, [i for i in _interested_users(db, row) if i not in mentioned],
+            "comment", f"New comment on {row.title}", f"{who}: {body.body.strip()[:160]}", cid, exclude=user.id)
+    db.commit()
+    db.refresh(c)
+    return {"id": c.id, "body": c.body, "user": who, "user_id": user.id,
+            "parent_id": c.parent_id, "resolved": False,
+            "at": c.created_at.isoformat() if c.created_at else ""}
+
+
+@router.patch("/comments/{comment_id}")
+def resolve_comment(comment_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    c = db.get(WorkContentComment, comment_id)
+    if not c:
+        raise HTTPException(404, "Not found")
+    c.resolved = not c.resolved
+    db.commit()
+    return {"id": c.id, "resolved": c.resolved}
+
+
+@router.delete("/comments/{comment_id}", status_code=204)
+def delete_comment(comment_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    c = db.get(WorkContentComment, comment_id)
+    if not c:
+        raise HTTPException(404, "Not found")
+    if not user.is_admin and c.user_id != user.id:
+        raise HTTPException(403, "Only the author or an admin can delete this")
+    db.execute(sa_delete(WorkContentComment).where(WorkContentComment.parent_id == comment_id))
+    db.flush()
+    db.delete(c)
+    db.commit()
 
 
 @router.delete("/content/{cid}", status_code=204)
@@ -210,82 +426,54 @@ def restore_version(cid: int, vid: int, db: Session = Depends(get_db), user: Use
     return _content_out(row, db)
 
 
-# ── Script analysis (deterministic — no API key needed) ──────
-FILLERS = ["um", "uh", "basically", "actually", "literally", "just", "really", "very", "like"]
-
-
+# ── Script analysis + selection actions ──────────────────────
 @router.get("/content/{cid}/analyze")
-def analyze_script(cid: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def analyze_script(
+    cid: int, target: int | None = None,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
     row = db.get(WorkContent, cid)
     if not row:
         raise HTTPException(404, "Not found")
-    body = row.body or ""
-    words = _word_count(body)
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", body) if s.strip()]
-    paragraphs = [p.strip() for p in body.split("\n\n") if p.strip()]
+    result = sa.analyze(row.body or "", row.platform or "", row.content_type or "", target)
+    _log(db, cid, user, "ai", "Ran script analysis")
+    db.commit()
+    return result
 
-    flags: list[dict] = []
-    long_s = [s for s in sentences if _word_count(s) > 28]
-    if long_s:
-        flags.append({
-            "kind": "Pacing",
-            "detail": f"{len(long_s)} sentence(s) run over 28 words — these read long on camera. Split them so each line lands one idea.",
-            "sample": long_s[0][:160],
-        })
-    long_p = [p for p in paragraphs if _word_count(p) > 120]
-    if long_p:
-        flags.append({
-            "kind": "Structure",
-            "detail": f"{len(long_p)} block(s) exceed ~120 words with no break — likely a stretch with no visual change. Plan b-roll or a punch-in here.",
-            "sample": long_p[0][:160],
-        })
-    found_fillers = [f for f in FILLERS if re.search(rf"\b{f}\b", body, re.I)]
-    if found_fillers:
-        flags.append({
-            "kind": "Tighten",
-            "detail": "Filler words present: " + ", ".join(found_fillers[:6]) + ". Cutting these raises idea-density per second.",
-            "sample": "",
-        })
 
-    hook = sentences[0] if sentences else ""
-    hook_notes: list[str] = []
-    if hook:
-        hw = _word_count(hook)
-        if hw > 20:
-            hook_notes.append(f"The opening line is {hw} words — tighten toward 8–14 so it lands before the scroll.")
-        if not re.search(r"\d", hook):
-            hook_notes.append("No number or concrete specific in the hook — specifics ('3 years', '£10k') buy credibility.")
-        if re.match(r"^(hi|hey|hello|welcome|good morning)", hook.strip(), re.I):
-            hook_notes.append("Opens with a greeting — delete it and start on the most surprising line.")
-        if not hook_notes:
-            hook_notes.append("Opening line looks tight — check it pairs with motion or bold text in the first second.")
-    else:
-        hook_notes.append("No script body yet — paste the script to analyze the hook.")
+class SelectionIn(BaseModel):
+    text: str = Field(min_length=1)
+    ratio: float = 0.3
 
-    # Beat sheet: one suggested shot per paragraph/sentence group.
-    SHOTS = ["Medium — speaker on camera", "B-roll — illustrate the point", "Close-up — detail or reaction",
-             "Wide — establish context", "Insert — screen / product / hands", "Punch-in — emphasis"]
-    beats = []
-    for i, p in enumerate((paragraphs or sentences)[:12]):
-        beats.append({
-            "n": i + 1,
-            "text": p[:180],
-            "shot": SHOTS[i % len(SHOTS)],
-            "words": _word_count(p),
-            "runtime": _runtime(_word_count(p)),
-        })
 
-    return {
-        "word_count": words,
-        "runtime": _runtime(words),
-        "sentences": len(sentences),
-        "paragraphs": len(paragraphs),
-        "avg_sentence_words": round(words / len(sentences), 1) if sentences else 0,
-        "flags": flags,
-        "hook": {"line": hook[:200], "notes": hook_notes},
-        "beats": beats,
-        "method": "Deterministic script analysis (word/sentence structure). No AI key required.",
-    }
+@router.post("/content/{cid}/tighten")
+def tighten_selection(cid: int, body: SelectionIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not db.get(WorkContent, cid):
+        raise HTTPException(404, "Not found")
+    out = sa.tighten(body.text, max(0.05, min(0.8, body.ratio)))
+    _log(db, cid, user, "ai", f"Tightened a selection ({out['saved_pct']}% shorter)")
+    db.commit()
+    return out
+
+
+@router.post("/content/{cid}/broll")
+def broll_selection(cid: int, body: SelectionIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not db.get(WorkContent, cid):
+        raise HTTPException(404, "Not found")
+    out = sa.broll_for(body.text)
+    _log(db, cid, user, "ai", "Generated b-roll ideas for a selection")
+    db.commit()
+    return out
+
+
+@router.post("/content/{cid}/inspect")
+def inspect_selection(cid: int, body: SelectionIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Analyze just the highlighted passage (readability, repetition, hook)."""
+    row = db.get(WorkContent, cid)
+    if not row:
+        raise HTTPException(404, "Not found")
+    return sa.analyze(body.text, row.platform or "", row.content_type or "", 0)
+
 
 
 # ── Weekly Learning Log / Shared Learning Library ────────────

@@ -21,6 +21,8 @@ ADD_COLUMNS: list[tuple[str, str, str]] = [
     ("work_content", "due_date", "VARCHAR(20) DEFAULT ''"),
     ("work_content", "order_index", "INTEGER DEFAULT 0"),
     ("learning_entries", "content_id", "INTEGER"),
+    ("work_content", "editing_by", "INTEGER"),
+    ("work_content", "editing_at", "TIMESTAMPTZ"),
 ]
 
 

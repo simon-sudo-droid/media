@@ -30,9 +30,13 @@ class WorkContent(Base):
     # Supporting docs, one per line. Accepts "Real doc name | https://…" so the
     # UI can show the actual document name instead of "Doc 1".
     links: Mapped[str] = mapped_column(Text, default="")
-    owner: Mapped[str] = mapped_column(String(120), default="")               # who's editing it
+    owner: Mapped[str] = mapped_column(String(120), default="")               # assigned editor (admin-set)
     due_date: Mapped[str] = mapped_column(String(20), default="")             # YYYY-MM-DD
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    # Soft edit lock: who has it open, refreshed by a heartbeat. Treated as
+    # stale (and therefore free) after a couple of minutes.
+    editing_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    editing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
@@ -47,6 +51,49 @@ class WorkContentVersion(Base):
     body: Mapped[str] = mapped_column(Text, default="")
     edited_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     edited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class WorkContentActivity(Base):
+    """Lightweight audit trail: uploads, edits, status changes, AI actions.
+
+    Gives context at a glance without opening version history for every
+    small update.
+    """
+    __tablename__ = "work_content_activity"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content_id: Mapped[int] = mapped_column(ForeignKey("work_content.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(40))          # created|edited|status|owner|ai|restore|comment
+    detail: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class WorkContentComment(Base):
+    """Threaded review comments on a script (parent_id = reply target)."""
+    __tablename__ = "work_content_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content_id: Mapped[int] = mapped_column(ForeignKey("work_content.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("work_content_comments.id"), nullable=True)
+    body: Mapped[str] = mapped_column(Text)
+    resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class Notification(Base):
+    """Per-user notification (status changes, comments, @mentions, edits)."""
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(30), default="info")   # status|comment|mention|edit|assign
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    content_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class LearningEntry(Base):

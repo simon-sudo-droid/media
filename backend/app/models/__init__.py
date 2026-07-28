@@ -26,7 +26,14 @@ from app.models.hub import (
     IndustrySeen,
     IndustryTool,
 )
-from app.models.workspace import WorkContent, WorkContentVersion, LearningEntry
+from app.models.workspace import (
+    WorkContent,
+    WorkContentVersion,
+    WorkContentActivity,
+    WorkContentComment,
+    Notification,
+    LearningEntry,
+)
 
 __all__ = [
     "User",
@@ -53,5 +60,8 @@ __all__ = [
     "IndustryTool",
     "WorkContent",
     "WorkContentVersion",
+    "WorkContentActivity",
+    "WorkContentComment",
+    "Notification",
     "LearningEntry",
 ]
