@@ -130,7 +130,8 @@ function ContentTab() {
   const [fSince, setFSince] = useState("");
   const [sort, setSort] = useState("updated");
   const [q, setQ] = useState("");
-  const [editors, setEditors] = useState<Editor[]>([]);
+  const [editors, setEditors] = useState<Editor[]>([]);   // assignable (non-admins)
+  const [team, setTeam] = useState<Editor[]>([]);          // everyone, for @mentions
   const [form, setForm] = useState({
     category: "leadership", title: "", content_type: "Script", platform: "",
     body: "", status: "Draft", notes: "", links: "", owner: "", due_date: "",
@@ -140,7 +141,10 @@ function ContentTab() {
     api<Content[]>("/workspace/content").then(setItems).catch(() => {}).finally(() => setLoading(false));
   }, []);
   useEffect(load, [load]);
-  useEffect(() => { api<Editor[]>("/workspace/editors").then(setEditors).catch(() => {}); }, []);
+  useEffect(() => {
+    api<Editor[]>("/workspace/editors").then(setEditors).catch(() => {});
+    api<Editor[]>("/workspace/team").then(setTeam).catch(() => {});
+  }, []);
 
   async function save() {
     if (!form.title.trim()) return;
@@ -338,7 +342,7 @@ function ContentTab() {
             )}
             <div className="space-y-3">
               {rows.map((c) => (
-                <ContentCard key={c.id} c={c} isAdmin={!!user?.is_admin} editors={editors} onPatch={patch} onDelete={remove} />
+                <ContentCard key={c.id} c={c} isAdmin={!!user?.is_admin} editors={editors} team={team} onPatch={patch} onDelete={remove} />
               ))}
             </div>
           </section>
@@ -348,8 +352,8 @@ function ContentTab() {
   );
 }
 
-function ContentCard({ c, isAdmin, editors, onPatch, onDelete }: {
-  c: Content; isAdmin: boolean; editors: Editor[];
+function ContentCard({ c, isAdmin, editors, team, onPatch, onDelete }: {
+  c: Content; isAdmin: boolean; editors: Editor[]; team: Editor[];
   onPatch: (c: Content, data: Partial<Content>) => Promise<Content>;
   onDelete: (c: Content) => void;
 }) {
@@ -919,7 +923,7 @@ function ContentCard({ c, isAdmin, editors, onPatch, onDelete }: {
                 className="min-h-[64px] w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary"
               />
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                {editors.slice(0, 4).map((ed) => (
+                {(team.length ? team : editors).slice(0, 5).map((ed) => (
                   <button key={ed.id} onClick={() => setNewComment((v) => `${v}${v && !v.endsWith(" ") ? " " : ""}@${ed.name} `)}
                     className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary">
                     @{ed.name}

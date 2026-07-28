@@ -246,7 +246,23 @@ def update_content(cid: int, body: ContentPatch, db: Session = Depends(get_db), 
 # ── Team / ownership ─────────────────────────────────────────
 @router.get("/editors")
 def list_editors(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """Assignable people (everyone with an account), for the Owner dropdown."""
+    """Assignable editors for the Owner dropdown.
+
+    Admins are excluded — they assign work rather than being assigned it, so
+    the list stays the actual editing team.
+    """
+    rows = db.scalars(select(User).order_by(User.full_name)).all()
+    return [
+        {"id": u.id, "name": u.full_name or u.email, "email": u.email, "is_admin": u.is_admin}
+        for u in rows
+        if not u.is_admin
+    ]
+
+
+@router.get("/team")
+def list_team(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Everyone with an account — used for @mention suggestions in comments
+    (you can mention an admin even though they aren't assignable)."""
     rows = db.scalars(select(User).order_by(User.full_name)).all()
     return [
         {"id": u.id, "name": u.full_name or u.email, "email": u.email, "is_admin": u.is_admin}
