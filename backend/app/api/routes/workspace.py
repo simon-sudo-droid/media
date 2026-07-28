@@ -331,14 +331,20 @@ def add_comment(cid: int, body: CommentIn, db: Session = Depends(get_db), user: 
     who = user.full_name or user.email
     _log(db, cid, user, "comment", body.body.strip()[:120])
 
-    # @mentions → direct notification; everyone else watching gets the thread update.
-    names = re.findall(r"@([A-Za-z][A-Za-z .'-]{1,40})", body.body)
+    # @mentions → direct notification; everyone else watching gets the thread
+    # update. Only trailing *capitalised* words join the name, so
+    # "@Gift Richard please fix" captures "Gift Richard", not the sentence.
+    names = [n.strip() for n in re.findall(r"@([A-Za-z][\w'-]*(?:\s+[A-Z][\w'-]*)*)", body.body)]
     mentioned: list[int] = []
     if names:
         for u in db.scalars(select(User)).all():
             label = (u.full_name or u.email).lower()
-            if any(label.startswith(n.strip().lower()) or n.strip().lower() in label for n in names):
-                mentioned.append(u.id)
+            first = label.split()[0] if label else ""
+            for n in names:
+                nl = n.lower()
+                if nl and (label.startswith(nl) or nl.startswith(label) or nl.split()[0] == first):
+                    mentioned.append(u.id)
+                    break
     if mentioned:
         _notify(db, mentioned, "mention", f"{who} mentioned you on {row.title}",
                 body.body.strip()[:180], cid, exclude=user.id)
@@ -388,6 +394,12 @@ def delete_content(cid: int, db: Session = Depends(get_db), user: User = Depends
         sa_update(LearningEntry).where(LearningEntry.content_id == cid).values(content_id=None)
     )
     db.execute(sa_delete(WorkContentVersion).where(WorkContentVersion.content_id == cid))
+    # Replies first (self-referencing FK), then top-level comments.
+    db.execute(sa_delete(WorkContentComment).where(
+        WorkContentComment.content_id == cid, WorkContentComment.parent_id.isnot(None)
+    ))
+    db.execute(sa_delete(WorkContentComment).where(WorkContentComment.content_id == cid))
+    db.execute(sa_delete(WorkContentActivity).where(WorkContentActivity.content_id == cid))
     db.flush()
     db.delete(row)
     db.commit()
