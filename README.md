@@ -121,7 +121,7 @@ Production stack (see **[DEPLOY.md](DEPLOY.md)** for step-by-step instructions):
 | Component | Platform |
 | --- | --- |
 | Frontend (Next.js) | **Vercel** — root directory `frontend`, set `NEXT_PUBLIC_API_URL` |
-| Backend (FastAPI) | **Railway** — root directory `backend`, builds `backend/Dockerfile` |
+| Backend (FastAPI) | **Oracle Cloud VM** — Docker + Caddy TLS (`deploy/oracle/`) |
 | Database (PostgreSQL) | **Supabase** — set `DATABASE_URL` to the session-pooler URL |
 | Scheduled jobs | **GitHub Actions** — `.github/workflows/keepalive.yml` |
 

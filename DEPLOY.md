@@ -5,9 +5,9 @@ Target architecture:
 | Component | Platform | Notes |
 | --- | --- | --- |
 | Frontend (Next.js 14) | **Vercel** | Free tier is sufficient; no cold starts |
-| Backend (FastAPI) | **Railway** | Long-running container, single instance |
+| Backend (FastAPI) | **Oracle Cloud** (Always Free VM) | Docker + Caddy TLS, single instance |
 | Database (PostgreSQL 17) | **Supabase** | Already migrated — do not change |
-| Scheduled jobs | **GitHub Actions** | `.github/workflows/keepalive.yml` |
+| Scheduled jobs | **GitHub Actions** | `keepalive.yml` + `deploy-api.yml` |
 
 The application contains no platform-specific SDKs. Everything below is
 configuration: the frontend learns the API's address from one build-time
@@ -31,34 +31,74 @@ variables.
 
 ---
 
-## Step 1 — Backend on Railway
+## Step 1 — Backend on an Oracle Cloud VM
 
-1. Go to <https://railway.app> and sign in with GitHub.
-2. **New Project ▸ Deploy from GitHub repo** ▸ select the repo.
-3. Open the created service ▸ **Settings**:
-   - **Root Directory**: `backend`
-   - **Branch**: `master`
-   - Railway then reads `backend/railway.json` and builds with
-     `backend/Dockerfile` (health check `/health`, 1 replica).
-4. **Variables** ▸ add:
+Oracle Cloud is IaaS, so this is a real (but one-time) server setup. All the
+assets live in `deploy/oracle/`.
 
-   | Variable | Value |
-   | --- | --- |
-   | `DATABASE_URL` | the Supabase session-pooler URL |
-   | `JWT_SECRET` | output of `openssl rand -hex 32` |
-   | `AI_PROVIDER` | `mock` |
-   | `GEMINI_API_KEY` | your key, or leave unset |
+### 1a. Create the VM
 
-   `CORS_ORIGINS` and `FRONTEND_URL` are set in Step 3, once the Vercel domain
-   exists. Do **not** set `PORT` — Railway injects it and the Dockerfile reads it.
-5. **Settings ▸ Networking ▸ Generate Domain** → note the URL, e.g.
-   `https://editmentor-api-production.up.railway.app`.
-6. Verify: `curl https://<railway-domain>/health` → `{"status":"ok",...}`
+1. Sign up at <https://cloud.oracle.com> (Always Free; a card is required for
+   identity verification but Always Free resources are never charged).
+   **Your home region is permanent** — choose one close to Supabase
+   (`ca-central-1`), e.g. *Canada Southeast (Toronto)*.
+2. **Compute ▸ Instances ▸ Create instance**
+   - **Image**: Canonical Ubuntu 22.04
+   - **Shape**: `VM.Standard.A1.Flex` (Ampere ARM) — **1 OCPU / 6 GB RAM**.
+     Always Free allows up to 4 OCPU / 24 GB total.
+     *If you get "Out of host capacity", try another Availability Domain, retry
+     later, or fall back to `VM.Standard.E2.1.Micro` (AMD, 1 GB).*
+   - **Networking**: create a new VCN, **Assign a public IPv4 address**
+   - **SSH keys**: paste your public key (`ssh-keygen -t ed25519` locally)
+3. Note the **public IP** once it is running.
 
-> **Keep 1 replica.** Video-generation jobs are held in process memory
-> (`_VIDEO_JOBS` in `backend/app/services/ai_service.py`), so a second replica
-> would make job polling fail intermittently. `railway.json` pins
-> `numReplicas: 1`.
+### 1b. Open the ports (both layers)
+
+1. **Cloud firewall**: Instance ▸ Subnet ▸ Security List ▸ **Add Ingress Rules**
+   — source `0.0.0.0/0`, TCP, destination ports **80** and **443**.
+2. **Host firewall**: handled by `bootstrap.sh` below. Oracle's Ubuntu images
+   `REJECT` everything but SSH in iptables, so opening the security list alone
+   is not enough — this is the most common cause of "the server is unreachable".
+
+### 1c. Point a hostname at the VM
+
+TLS requires a real hostname; a bare IP cannot get a public certificate.
+Free option: <https://www.duckdns.org> (sign in with GitHub/Google) → create a
+subdomain, e.g. `editmentor-api` → set its IP to the VM's public IP. You now
+have `editmentor-api.duckdns.org`.
+
+### 1d. Bootstrap and run
+
+SSH in (`ssh ubuntu@<VM-IP>`), then:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/simon-sudo-droid/media/master/deploy/oracle/bootstrap.sh | bash
+# log out and back in so docker group membership applies
+cd ~/editmentor/deploy/oracle
+cp .env.example .env && nano .env      # fill in API_DOMAIN, DATABASE_URL, JWT_SECRET
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Verify (Caddy issues the certificate on first request — allow ~30 s):
+
+```bash
+curl https://<API_DOMAIN>/health     # → {"status":"ok","ai_provider":"mock"}
+```
+
+> **Keep one instance.** Video-generation jobs are held in process memory
+> (`_VIDEO_JOBS` in `backend/app/services/ai_service.py`), so running a second
+> container would make job polling fail intermittently.
+
+### 1e. Automated deploys
+
+`.github/workflows/deploy-api.yml` redeploys on every push to `master` that
+touches `backend/**`. Add these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `OCI_HOST` | the VM's public IP |
+| `OCI_USER` | `ubuntu` |
+| `OCI_SSH_KEY` | the **private** key matching the VM's public key |
 
 ---
 
@@ -74,7 +114,7 @@ variables.
 
    | Variable | Value |
    | --- | --- |
-   | `NEXT_PUBLIC_API_URL` | the Railway domain from Step 1 |
+   | `NEXT_PUBLIC_API_URL` | `https://<your-duckdns-subdomain>.duckdns.org` from Step 1 |
 
 5. **Deploy**, then note the production URL, e.g. `https://editmentor.vercel.app`.
 
@@ -86,12 +126,14 @@ variables.
 
 ## Step 3 — Point the backend at the new frontend
 
-In Railway ▸ Variables, set both:
+On the VM, edit `~/editmentor/deploy/oracle/.env`:
 
 | Variable | Value |
 | --- | --- |
 | `CORS_ORIGINS` | `https://<your-vercel-domain>` |
 | `FRONTEND_URL` | `https://<your-vercel-domain>` |
+
+then apply: `docker compose -f docker-compose.prod.yml up -d`
 
 `CORS_ORIGINS` accepts a comma-separated list, so during a transition you can
 allow several origins at once:
@@ -100,7 +142,7 @@ allow several origins at once:
 CORS_ORIGINS=https://editmentor.vercel.app,https://editmentor-web.onrender.com
 ```
 
-Railway redeploys automatically. Then verify from the Vercel site: sign in, open
+Then verify from the Vercel site: sign in, open
 the dashboard, and create/edit an item in Content Workspace.
 
 ---
@@ -114,7 +156,7 @@ the dashboard, and create/edit an item in Content Workspace.
    even if nobody opens the page,
 3. redeploys a service that connects but never responds.
 
-Update `WEB_URL` and `API_URL` to the Vercel and Railway domains. Neither
+Update `WEB_URL` and `API_URL` to the Vercel and Oracle domains. Neither
 platform sleeps the way Render's free tier did, so the warming and self-healing
 steps become optional — the `/industry/cron` call is the part worth keeping.
 
@@ -140,7 +182,7 @@ app runs with no API keys (AI features fall back to deterministic output).
 
 ## Environment variable reference
 
-**Backend (Railway)**
+**Backend (Oracle VM — `deploy/oracle/.env`)**
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -168,7 +210,7 @@ app runs with no API keys (AI features fall back to deterministic output).
   in JSON, are analysed in memory, and discarded — so no object storage or
   persistent disk is needed. Mind the platform's request-body limit: Senior
   Editor accepts ~30 MB of base64 video, which exceeds the 4.5 MB limit on
-  serverless functions. That is why the API needs a container host (Railway),
+  serverless functions. That is why the API needs a container host (the Oracle VM),
   not Vercel functions.
 - **Schema management.** There is no Alembic. `Base.metadata.create_all()`
   creates new tables at startup and `backend/app/core/migrate.py` applies
