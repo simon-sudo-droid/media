@@ -116,11 +116,20 @@ for mapping Clerk users.
 
 ## Deployment
 
-- **Frontend** → Vercel (set `NEXT_PUBLIC_API_URL` to your API URL).
-- **Backend** → Render / Railway / Fly.io / any Docker host (deploy `backend/`).
-- **Database** → Supabase or any managed Postgres; set `DATABASE_URL`.
-- Set a strong `JWT_SECRET` (`openssl rand -hex 32`) and lock `CORS_ORIGINS`
-  to your real frontend domain in production.
+Production stack (see **[DEPLOY.md](DEPLOY.md)** for step-by-step instructions):
+
+| Component | Platform |
+| --- | --- |
+| Frontend (Next.js) | **Vercel** — root directory `frontend`, set `NEXT_PUBLIC_API_URL` |
+| Backend (FastAPI) | **Railway** — root directory `backend`, builds `backend/Dockerfile` |
+| Database (PostgreSQL) | **Supabase** — set `DATABASE_URL` to the session-pooler URL |
+| Scheduled jobs | **GitHub Actions** — `.github/workflows/keepalive.yml` |
+
+- The backend needs a **long-running container** (not serverless): uploads
+  arrive as base64 up to ~30 MB and video jobs are held in process memory, so
+  run it as a **single instance**.
+- Set a strong `JWT_SECRET` (`openssl rand -hex 32`) and pin `CORS_ORIGINS` to
+  your real frontend domain(s) — it accepts a comma-separated list.
 
 ---
 
