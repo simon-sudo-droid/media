@@ -1,0 +1,58 @@
+name: Deploy API to Oracle Cloud
+
+# Replaces Render's git-push-to-deploy: on every push to master that touches
+# the backend, SSH into the Oracle VM, pull, rebuild and restart the API.
+#
+# Required repository secrets (Settings ▸ Secrets and variables ▸ Actions):
+#   OCI_HOST         public IP or hostname of the VM
+#   OCI_USER         SSH user (usually "ubuntu")
+#   OCI_SSH_KEY      the PRIVATE key whose public half is on the VM
+#                    (paste the whole file, including the BEGIN/END lines)
+#
+# The VM's ~/editmentor/deploy/oracle/.env is never touched by this workflow,
+# so secrets live only on the server.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/**"
+      - "deploy/oracle/**"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.OCI_HOST }}
+          username: ${{ secrets.OCI_USER }}
+          key: ${{ secrets.OCI_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd ~/editmentor
+            git fetch --all --quiet
+            git reset --hard origin/master
+            cd deploy/oracle
+            docker compose -f docker-compose.prod.yml up -d --build
+            # Give the container time to boot (startup runs create_all +
+            # migrations + idempotent seeding), then verify from inside.
+            for i in $(seq 1 30); do
+              if docker compose -f docker-compose.prod.yml exec -T api \
+                   curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+                echo "API healthy after ${i} attempt(s)"
+                docker image prune -f >/dev/null 2>&1 || true
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "::error::API did not become healthy — dumping recent logs"
+            docker compose -f docker-compose.prod.yml logs --tail=80 api
+            exit 1

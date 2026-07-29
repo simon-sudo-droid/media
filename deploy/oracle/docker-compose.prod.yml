@@ -1,0 +1,58 @@
+# Production stack for a single Oracle Cloud VM (Always Free tier).
+#
+#   Caddy (443/80, automatic Let's Encrypt TLS)  ->  api (FastAPI, internal)
+#
+# The database is Supabase, so nothing stateful runs here — this VM is pure
+# compute and can be rebuilt from scratch at any time.
+#
+# Usage on the VM (see DEPLOY.md for the full walkthrough):
+#   cd ~/editmentor/deploy/oracle
+#   cp .env.example .env && nano .env        # fill in secrets + API_DOMAIN
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: editmentor-api:latest
+    container_name: editmentor_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Uvicorn listens here; only Caddy can reach it (no host port published).
+      PORT: 8000
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: editmentor_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"     # required for the Let's Encrypt HTTP-01 challenge
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # persists issued certificates across restarts
+      - caddy_config:/config
+    depends_on:
+      - api
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  caddy_data:
+  caddy_config:

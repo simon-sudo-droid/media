@@ -1,0 +1,30 @@
+# Caddy reverse proxy — terminates TLS and forwards to the FastAPI container.
+#
+# Caddy obtains and renews a Let's Encrypt certificate automatically for
+# $API_DOMAIN, which is why the API must have a real hostname (a bare Oracle IP
+# cannot get a public certificate). HTTPS is mandatory: the Vercel frontend is
+# served over HTTPS, and browsers block HTTPS pages from calling HTTP APIs.
+
+{$API_DOMAIN} {
+	encode gzip
+
+	# Senior Editor accepts ~30 MB of base64 video in a JSON body. Set the
+	# proxy limit above that (the app itself rejects >32 MB in
+	# backend/app/main.py, so the app stays the real gatekeeper).
+	request_body {
+		max_size 40MB
+	}
+
+	reverse_proxy api:8000 {
+		# Long enough for large in-memory analyses; the app has no long polls.
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
