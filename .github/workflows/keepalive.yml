@@ -1,27 +1,77 @@
 name: Keep Render services warm
 
-# Free keep-alive: pings the Render services so they don't spin down (which
-# causes the ~50s "service waking up" screen on Render's free tier).
-# Runs on GitHub's infrastructure — no cost on public repos; uses a small
-# amount of Actions minutes on private repos.
+# Free keep-alive + self-healing watchdog.
+#
+# Render's free web services occasionally end up with STALE EDGE ROUTING: the
+# instance is healthy (internal health checks pass) but public requests connect
+# over TLS and then never get a response, so the app just spins forever. The
+# only reliable fix is a fresh deploy, so this workflow detects that state and
+# triggers one automatically.
+#
+# Setup for the self-healing part (one-time, optional):
+#   GitHub repo ▸ Settings ▸ Secrets and variables ▸ Actions ▸ New secret
+#     RENDER_API_KEY = <your Render API key from dashboard.render.com/u/settings>
+# Without that secret the workflow still pings (keep-alive) and just reports
+# a hang instead of fixing it.
 on:
   schedule:
-    # Every 10 minutes (GitHub may delay low-priority schedules a few minutes).
-    # NOTE: keeping free services awake 24/7 can use a lot of Render's monthly
-    # free instance hours. If you hit a limit, narrow the window, e.g.:
-    #   - cron: "*/10 6-23 * * *"   # ~daytime only (UTC)
+    # Every 10 minutes. Narrow to daytime if Render's free instance hours run
+    # short, e.g. "*/10 5-22 * * *".
     - cron: "*/10 * * * *"
   workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      WEB_URL: https://editmentor-web.onrender.com/
+      API_URL: https://editmentor-api.onrender.com/health
+      WEB_SRV: srv-d8o34o48aovs73feaaeg
+      API_SRV: srv-d8o341c8aovs73fe9fp0
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
     steps:
-      - name: Ping web + API
+      - name: Ping, and redeploy anything that hangs
         run: |
-          echo "Pinging at $(date -u)"
-          curl -sS -m 90 -o /dev/null -w "web  -> %{http_code}\n" https://editmentor-web.onrender.com/ || true
-          curl -sS -m 90 -o /dev/null -w "api  -> %{http_code}\n" https://editmentor-api.onrender.com/health || true
+          set -uo pipefail
+
+          # Two attempts with a 45s timeout each: a cold free instance can take
+          # ~50s to wake, so one slow reply is normal and must not trigger a
+          # redeploy. Only a total non-response twice counts as stuck.
+          check() {  # $1=url -> echoes the HTTP code ("000" means no response)
+            local code
+            code=$(curl -sS -o /dev/null -m 45 -w "%{http_code}" "$1" || echo 000)
+            if [ "$code" = "000" ]; then
+              sleep 20
+              code=$(curl -sS -o /dev/null -m 45 -w "%{http_code}" "$1" || echo 000)
+            fi
+            echo "$code"
+          }
+
+          redeploy() {  # $1=service id, $2=label
+            if [ -z "${RENDER_API_KEY:-}" ]; then
+              echo "::warning::$2 is not responding, but RENDER_API_KEY is not set — cannot self-heal. Add the secret to enable automatic recovery."
+              return
+            fi
+            echo "::warning::$2 is not responding (stale routing) — triggering a fresh deploy."
+            curl -sS -m 60 -X POST \
+              "https://api.render.com/v1/services/$1/deploys" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache":"do_not_clear"}' \
+              -o /dev/null -w "  deploy request -> %{http_code}\n" || true
+          }
+
+          echo "Checked at $(date -u)"
+
+          WEB=$(check "$WEB_URL"); echo "web -> $WEB"
+          [ "$WEB" = "000" ] && redeploy "$WEB_SRV" "editmentor-web"
+
+          API=$(check "$API_URL"); echo "api -> $API"
+          [ "$API" = "000" ] && redeploy "$API_SRV" "editmentor-api"
+
           # Idempotent daily trigger: builds the Industry Monitoring digest
           # once per day even if nobody has opened the page yet.
-          curl -sS -m 120 -o /dev/null -w "cron -> %{http_code}\n" https://editmentor-api.onrender.com/industry/cron || true
+          curl -sS -m 120 -o /dev/null -w "cron -> %{http_code}\n" \
+            https://editmentor-api.onrender.com/industry/cron || true
+
+          exit 0
