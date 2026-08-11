@@ -34,6 +34,7 @@ type Entry = {
   workflow_impact: string; apply_plan: string; tags: string[];
   why_useful: string; project_target: string; do_differently: string;
   team_adopt: boolean; worth_sharing: boolean; content_id: number | null; content_title: string;
+  logged_at: string;
 };
 type Progress = {
   completed: number; team_total: number; weekly_streak: number; topics_explored: number;
@@ -1069,8 +1070,9 @@ function InlineDate({ value, onSave }: { value: string; onSave: (v: string) => v
 }
 
 /* ── 2) Weekly Learning Log (+ Knowledge-to-Action) ────────── */
+// No entry_date: the server stamps the date when the insight is submitted.
 const EMPTY_ENTRY = {
-  entry_date: "", title: "", resource_type: "Video", url: "", summary: "", takeaways: "",
+  title: "", resource_type: "Video", url: "", summary: "", takeaways: "",
   workflow_impact: "", apply_plan: "", tags: "", why_useful: "", project_target: "",
   do_differently: "", team_adopt: false, worth_sharing: false, content_id: "" as string,
 };
@@ -1118,7 +1120,11 @@ function LogTab() {
         <select className={inputCls} value={form.resource_type} onChange={(e) => setForm({ ...form, resource_type: e.target.value })}>
           {RESOURCE_TYPES.map((t) => <option key={t}>{t}</option>)}
         </select>
-        <input className={inputCls} type="date" value={form.entry_date} onChange={(e) => setForm({ ...form, entry_date: e.target.value })} />
+        {/* Date is recorded automatically on submit — not editable. */}
+        <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-secondary/30 px-3 py-2 text-sm text-muted-foreground">
+          <CalendarDays className="h-4 w-4 shrink-0 text-primary" />
+          <span>Dated automatically: <span className="font-medium text-foreground">{new Date().toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span></span>
+        </div>
         <input className={inputCls + " sm:col-span-2"} placeholder="Source link (https://…)" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
         <textarea className={inputCls + " min-h-[70px] sm:col-span-2"} placeholder="What did you learn? (summary)" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
         <textarea className={inputCls + " min-h-[60px]"} placeholder="Key takeaways…" value={form.takeaways} onChange={(e) => setForm({ ...form, takeaways: e.target.value })} />
@@ -1249,7 +1255,12 @@ function EntryCard({ e, showAuthor, onDelete }: { e: Entry; showAuthor?: boolean
           {e.worth_sharing && <Badge variant="warning">⭐ Team pick</Badge>}
           {e.team_adopt && <Badge variant="success">Adopt</Badge>}
           {e.content_title && <Badge variant="default" className="gap-1"><Link2 className="h-3 w-3" /> {e.content_title}</Badge>}
-          <span className="text-xs text-muted-foreground">{e.entry_date}{showAuthor && e.user_name ? ` · ${e.user_name}` : ""}</span>
+          <span className="text-xs text-muted-foreground" title={e.logged_at ? `Logged ${new Date(e.logged_at).toLocaleString()}` : undefined}>
+            {e.logged_at
+              ? new Date(e.logged_at).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+              : e.entry_date}
+            {showAuthor && e.user_name ? ` · ${e.user_name}` : ""}
+          </span>
           {onDelete && (
             <span className="ml-auto shrink-0">
               {confirmDel ? (

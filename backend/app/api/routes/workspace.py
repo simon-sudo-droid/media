@@ -506,7 +506,9 @@ def inspect_selection(cid: int, body: SelectionIn, db: Session = Depends(get_db)
 
 # ── Weekly Learning Log / Shared Learning Library ────────────
 class LearningIn(BaseModel):
-    entry_date: str = ""
+    # NOTE: no entry_date field. The log date is recorded by the server at the
+    # moment the insight is submitted and is deliberately not client-supplied,
+    # so an entry can never be back-dated or edited (in the UI or via the API).
     title: str = Field(min_length=1, max_length=255)
     resource_type: str = Field(default="Video", max_length=40)
     url: str = Field(default="", max_length=600)
@@ -535,6 +537,10 @@ def _entry_out(e: LearningEntry, name: str, content_title: str = "") -> dict:
         "do_differently": e.do_differently, "team_adopt": e.team_adopt,
         "worth_sharing": e.worth_sharing,
         "content_id": e.content_id, "content_title": content_title,
+        # Exact moment the insight was logged (UTC) — the UI renders it in the
+        # viewer's local time. entry_date stays the YYYY-MM-DD used for
+        # grouping, filtering and the weekly-streak calculation.
+        "logged_at": e.created_at.isoformat() if e.created_at else "",
     }
 
 
@@ -572,8 +578,10 @@ def list_learning(
 @router.post("/learning", status_code=201)
 def add_learning(body: LearningIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data = body.model_dump()
-    if not data["entry_date"]:
-        data["entry_date"] = datetime.now(timezone.utc).date().isoformat()
+    # Server-authoritative timestamp: whatever the client sends is irrelevant,
+    # because entry_date is not part of the request schema at all.
+    now = datetime.now(timezone.utc)
+    data["entry_date"] = now.date().isoformat()
     if data.get("content_id") and not db.get(WorkContent, data["content_id"]):
         raise HTTPException(400, "Linked content not found")
     row = LearningEntry(**data, user_id=user.id)
