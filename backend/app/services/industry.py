@@ -19,6 +19,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models import IndustryDigest, IndustrySeen, IndustryTool
@@ -113,6 +114,17 @@ KW_BROLL = ["stock", "footage", "b-roll", "broll", "library", "asset", "template
 KW_WORKFLOW = ["workflow", "automat", "plugin", "integrat", "prompt", "agent", "how to", "guide", "tip", "speed up", "pipeline", "shortcut"]
 KW_TREND = ["trend", "viral", "style", "transition", "storytelling", "short-form", "shorts", "tiktok", "captions", "aesthetic", "popular"]
 KW_NEWS = ["openai", "google", "gemini", "anthropic", "claude", "meta", "gpt", "model", "funding", "acquisition", "acquire", "partnership", "sora", "veo"]
+
+
+# industry_seen.url is VARCHAR(600) but some sources (notably Google News RSS)
+# emit URLs well over that. The stored value and the lookup MUST use the same
+# key, otherwise a re-fetched article looks new, passes the "already seen"
+# filter, and then trips the unique index on insert.
+_SEEN_KEY_LEN = 600
+
+
+def _seen_key(url: str) -> str:
+    return (url or "")[:_SEEN_KEY_LEN]
 
 
 def _hit(text: str, kws: list[str]) -> bool:
@@ -253,7 +265,7 @@ def build_digest(db: Session, today: str) -> dict:
         db.delete(row_)
     db.commit()
     seen_urls = set(db.scalars(select(IndustrySeen.url)).all())
-    items = [it for it in items if it["url"] not in seen_urls]
+    items = [it for it in items if _seen_key(it["url"]) not in seen_urls]
 
     used: set[str] = set()
     updates_raw = _pick(items, used, lambda it: _vendor_for(it) is not None or (it["group"] == "vendor"))
@@ -298,15 +310,29 @@ def build_digest(db: Session, today: str) -> dict:
         "item_count": sum(len(v) for v in sections.values() if isinstance(v, list)),
     }
 
-    # Remember every reported URL so tomorrow never repeats it.
-    for section in ("news", "new_tools", "updates", "broll", "workflow", "trending"):
-        for it in payload[section]:
-            if it.get("url"):
-                db.add(IndustrySeen(url=it["url"][:600], first_seen=today))
+    # Save the digest FIRST and commit it on its own, so the report is never
+    # lost because of a problem in the (secondary) de-duplication bookkeeping.
     row = db.scalar(select(IndustryDigest).where(IndustryDigest.digest_date == today))
     if row:
         row.payload = json.dumps(payload)
     else:
         db.add(IndustryDigest(digest_date=today, payload=json.dumps(payload)))
     db.commit()
+
+    # Remember every reported URL so tomorrow never repeats it. Keys are
+    # truncated with the same helper used for the lookup above, and the insert
+    # ignores conflicts — a URL already recorded is exactly the outcome we want.
+    keys = {
+        _seen_key(it["url"])
+        for section in ("news", "new_tools", "updates", "broll", "workflow", "trending")
+        for it in payload[section]
+        if it.get("url")
+    }
+    if keys:
+        db.execute(
+            pg_insert(IndustrySeen.__table__)
+            .values([{"url": k, "first_seen": today} for k in sorted(keys)])
+            .on_conflict_do_nothing(index_elements=["url"])
+        )
+        db.commit()
     return payload
