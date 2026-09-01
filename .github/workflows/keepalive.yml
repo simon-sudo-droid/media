@@ -1,23 +1,25 @@
-name: Keep Render services warm
+name: Daily digest trigger + health watchdog
 
-# Free keep-alive + self-healing watchdog.
+# ── Why this runs ONCE A DAY, not every 10 minutes ───────────────
+# Render's free tier allows 750 instance-hours per MONTH across the whole
+# account. Pinging two services every 10 minutes keeps both awake 24/7, which
+# needs ~1,488 hours/month — so the quota is exhausted mid-month and Render
+# SUSPENDS the services ("This service has been suspended") until the 1st.
+# That is exactly what happened 2026-08-30: digests stopped, the app went
+# down, and it only recovered when September reset the quota.
 #
-# Render's free web services occasionally end up with STALE EDGE ROUTING: the
-# instance is healthy (internal health checks pass) but public requests connect
-# over TLS and then never get a response, so the app just spins forever. The
-# only reliable fix is a fresh deploy, so this workflow detects that state and
-# triggers one automatically.
+# Letting the services sleep when idle keeps usage inside the free allowance.
+# The trade-off is a ~50s cold start on the first visit after a quiet spell —
+# far preferable to multi-day suspensions.
 #
-# Setup for the self-healing part (one-time, optional):
-#   GitHub repo ▸ Settings ▸ Secrets and variables ▸ Actions ▸ New secret
-#     RENDER_API_KEY = <your Render API key from dashboard.render.com/u/settings>
-# Without that secret the workflow still pings (keep-alive) and just reports
-# a hang instead of fixing it.
+# The single daily run still:
+#   1. builds the Industry Monitoring digest (/industry/cron), and
+#   2. detects a service that connects but never responds (stale routing) and
+#      redeploys it — needs the RENDER_API_KEY repo secret.
 on:
   schedule:
-    # Every 10 minutes. Narrow to daytime if Render's free instance hours run
-    # short, e.g. "*/10 5-22 * * *".
-    - cron: "*/10 * * * *"
+    # Once daily at 05:10 UTC (08:10 in East Africa) — before the workday.
+    - cron: "10 5 * * *"
   workflow_dispatch: {}   # lets you trigger it manually from the Actions tab
 
 jobs:
@@ -30,20 +32,21 @@ jobs:
       API_SRV: srv-d8o341c8aovs73fe9fp0
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
     steps:
-      - name: Ping, and redeploy anything that hangs
+      - name: Trigger daily digest; redeploy anything that hangs
         run: |
           set -uo pipefail
 
-          # Two attempts with a 45s timeout each: a cold free instance can take
-          # ~50s to wake, so one slow reply is normal and must not trigger a
-          # redeploy. Only a total non-response twice counts as stuck.
+          # Now that the services are allowed to sleep, a cold start is the
+          # NORMAL case on this daily run and can take ~50-60s. Timeouts are
+          # therefore 120s over three attempts — only a service that never
+          # answers at all is treated as stuck (stale routing).
           check() {  # $1=url -> echoes the HTTP code ("000" means no response)
             local code
-            code=$(curl -sS -o /dev/null -m 45 -w "%{http_code}" "$1" || echo 000)
-            if [ "$code" = "000" ]; then
-              sleep 20
-              code=$(curl -sS -o /dev/null -m 45 -w "%{http_code}" "$1" || echo 000)
-            fi
+            for _ in 1 2 3; do
+              code=$(curl -sS -o /dev/null -m 120 -w "%{http_code}" "$1" || echo 000)
+              [ "$code" != "000" ] && break
+              sleep 15
+            done
             echo "$code"
           }
 
